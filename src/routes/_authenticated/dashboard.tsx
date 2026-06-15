@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,8 +10,9 @@ import { Plus, TrendingUp, Wallet, Target, ArrowUpRight, Calendar, Sparkles } fr
 import { fmtBRL, fmtCompact } from "@/lib/format";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, CartesianGrid } from "recharts";
 import { toast } from "sonner";
-import { BYPASS_AUTH } from "@/lib/auth-mode";
-import { dataStore } from "@/lib/data-store";
+import { getFirestore, collection, getDocs, addDoc } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { getApp } from "firebase/app";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Visão geral — Verdance" }] }),
@@ -28,46 +28,36 @@ function Dashboard() {
   const { data: years = [] } = useQuery({
     queryKey: ["years"],
     queryFn: async () => {
-      if (BYPASS_AUTH) {
-        return dataStore.getYears();
-      }
-
-      const { data, error } = await supabase.from("years").select("*").order("year", { ascending: false });
-      if (error) throw error;
-      return data;
+      const db = getFirestore(getApp());
+      const snap = await getDocs(collection(db, "years"));
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      return data.sort((a: any, b: any) => b.year - a.year);
     },
   });
 
   const { data: purchases = [] } = useQuery({
     queryKey: ["all-purchases"],
     queryFn: async () => {
-      if (BYPASS_AUTH) {
-        return dataStore.getAllPurchasesWithCategory();
-      }
-
-      const { data } = await supabase.from("purchases").select("*, categories(name, color)").order("purchase_date", { ascending: false });
-      return data ?? [];
+      const db = getFirestore(getApp());
+      const snap = await getDocs(collection(db, "purchases"));
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      return data.sort((a: any, b: any) => new Date(b.purchase_date).getTime() - new Date(a.purchase_date).getTime());
     },
   });
 
   const createYear = useMutation({
     mutationFn: async () => {
-      if (BYPASS_AUTH) {
-        await dataStore.createYear({
-          year: parseInt(newYear),
-          total_budget: parseFloat(newBudget) || 0,
-        });
-        return;
-      }
-
-      const { data: { user } } = await supabase.auth.getUser();
+      const auth = getAuth(getApp());
+      const user = auth.currentUser;
       if (!user) throw new Error("not auth");
-      const { error } = await supabase.from("years").insert({
-        user_id: user.id,
+      
+      const db = getFirestore(getApp());
+      await addDoc(collection(db, "years"), {
+        user_id: user.uid,
         year: parseInt(newYear),
         total_budget: parseFloat(newBudget) || 0,
+        created_at: new Date().toISOString()
       });
-      if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Ano criado");
@@ -109,7 +99,7 @@ function Dashboard() {
     .map(({ month, value }) => ({ month, value }));
 
   return (
-    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
+    <div className="px-6 pb-6 pt-10 lg:px-10 lg:pb-10 lg:pt-16 max-w-7xl mx-auto space-y-8">
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>

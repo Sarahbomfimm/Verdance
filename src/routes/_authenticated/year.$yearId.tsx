@@ -1,7 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,8 +10,9 @@ import { Plus, ArrowLeft, Pencil, Trash2, Target, TrendingUp, ChevronRight, Spar
 import { fmtBRL, fmtCompact } from "@/lib/format";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
 import { toast } from "sonner";
-import { BYPASS_AUTH } from "@/lib/auth-mode";
-import { dataStore } from "@/lib/data-store";
+import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, deleteDoc, addDoc, query, where } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { getApp } from "firebase/app";
 
 export const Route = createFileRoute("/_authenticated/year/$yearId")({
   head: () => ({ meta: [{ title: "Ano — Verdance" }] }),
@@ -22,6 +22,11 @@ export const Route = createFileRoute("/_authenticated/year/$yearId")({
 const COLOR_PRESETS = [
   "#10b981", "#f59e0b", "#3b82f6", "#a855f7", "#ec4899",
   "#ef4444", "#14b8a6", "#f97316", "#8b5cf6", "#06b6d4",
+  "#22c55e", "#84cc16", "#eab308", "#fb7185", "#f43f5e",
+  "#6366f1", "#4f46e5", "#0ea5e9", "#0891b2", "#7c3aed",
+  "#9333ea", "#d946ef", "#a21caf", "#f472b6", "#be123c",
+  "#16a34a", "#65a30d", "#ca8a04", "#ea580c", "#dc2626",
+  "#334155", "#0f766e", "#1d4ed8", "#312e81", "#7f1d1d",
 ];
 
 function YearView() {
@@ -35,39 +40,30 @@ function YearView() {
   const { data: year } = useQuery({
     queryKey: ["year", yearId],
     queryFn: async () => {
-      if (BYPASS_AUTH) {
-        const data = await dataStore.getYear(yearId);
-        if (!data) throw new Error("Ano não encontrado");
-        return data;
-      }
-
-      const { data, error } = await supabase.from("years").select("*").eq("id", yearId).single();
-      if (error) throw error;
-      return data;
+      const db = getFirestore(getApp());
+      const docSnap = await getDoc(doc(db, "years", yearId));
+      if (!docSnap.exists()) throw new Error("Ano não encontrado");
+      return { id: docSnap.id, ...docSnap.data() } as any;
     },
   });
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories", yearId],
     queryFn: async () => {
-      if (BYPASS_AUTH) {
-        return dataStore.getCategoriesByYear(yearId);
-      }
-
-      const { data } = await supabase.from("categories").select("*").eq("year_id", yearId).order("created_at");
-      return data ?? [];
+      const db = getFirestore(getApp());
+      const q = query(collection(db, "categories"), where("year_id", "==", yearId));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
     },
   });
 
   const { data: purchases = [] } = useQuery({
     queryKey: ["purchases-year", yearId],
     queryFn: async () => {
-      if (BYPASS_AUTH) {
-        return dataStore.getPurchasesByYear(yearId);
-      }
-
-      const { data } = await supabase.from("purchases").select("*").eq("year_id", yearId);
-      return data ?? [];
+      const db = getFirestore(getApp());
+      const q = query(collection(db, "purchases"), where("year_id", "==", yearId));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
     },
   });
 
@@ -84,13 +80,8 @@ function YearView() {
 
   const deleteYear = useMutation({
     mutationFn: async () => {
-      if (BYPASS_AUTH) {
-        await dataStore.deleteYear(yearId);
-        return;
-      }
-
-      const { error } = await supabase.from("years").delete().eq("id", yearId);
-      if (error) throw error;
+      const db = getFirestore(getApp());
+      await deleteDoc(doc(db, "years", yearId));
     },
     onSuccess: () => {
       toast.success("Ano excluído");
@@ -101,7 +92,7 @@ function YearView() {
   });
 
   return (
-    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
+    <div className="px-6 pb-6 pt-10 lg:px-10 lg:pb-10 lg:pt-16 max-w-7xl mx-auto space-y-8">
       <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="w-4 h-4" /> Visão geral
       </Link>
@@ -262,25 +253,15 @@ function CategoryDialog({ open, setOpen, yearId, editing }: any) {
 
   const save = useMutation({
     mutationFn: async () => {
-      if (BYPASS_AUTH) {
-        await dataStore.upsertCategory({
-          id: editing?.id,
-          year_id: yearId,
-          name,
-          budget: parseFloat(budget) || 0,
-          color,
-        });
-        return;
-      }
-
-      const { data: { user } } = await supabase.auth.getUser();
+      const auth = getAuth(getApp());
+      const user = auth.currentUser;
       if (!user) throw new Error("not auth");
+      const db = getFirestore(getApp());
+      
       if (editing) {
-        const { error } = await supabase.from("categories").update({ name, budget: parseFloat(budget) || 0, color }).eq("id", editing.id);
-        if (error) throw error;
+        await updateDoc(doc(db, "categories", editing.id), { name, budget: parseFloat(budget) || 0, color });
       } else {
-        const { error } = await supabase.from("categories").insert({ user_id: user.id, year_id: yearId, name, budget: parseFloat(budget) || 0, color });
-        if (error) throw error;
+        await addDoc(collection(db, "categories"), { user_id: user.uid, year_id: yearId, name, budget: parseFloat(budget) || 0, color, created_at: new Date().toISOString() });
       }
     },
     onSuccess: () => {
@@ -296,13 +277,8 @@ function CategoryDialog({ open, setOpen, yearId, editing }: any) {
 
   const del = useMutation({
     mutationFn: async () => {
-      if (BYPASS_AUTH) {
-        await dataStore.deleteCategory(editing.id);
-        return;
-      }
-
-      const { error } = await supabase.from("categories").delete().eq("id", editing.id);
-      if (error) throw error;
+      const db = getFirestore(getApp());
+      await deleteDoc(doc(db, "categories", editing.id));
     },
     onSuccess: () => {
       toast.success("Categoria excluída");
@@ -364,13 +340,8 @@ function EditYearDialog({ open, setOpen, year }: any) {
 
   const save = useMutation({
     mutationFn: async () => {
-      if (BYPASS_AUTH) {
-        await dataStore.updateYearBudget(year.id, parseFloat(budget) || 0);
-        return;
-      }
-
-      const { error } = await supabase.from("years").update({ total_budget: parseFloat(budget) || 0 }).eq("id", year.id);
-      if (error) throw error;
+      const db = getFirestore(getApp());
+      await updateDoc(doc(db, "years", year.id), { total_budget: parseFloat(budget) || 0 });
     },
     onSuccess: () => {
       toast.success("Orçamento atualizado");

@@ -1,20 +1,18 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/useAuth";
+import { getAuth, signOut } from "firebase/auth";
+import { getApp } from "firebase/app";
 import {
   LayoutDashboard, Calendar, FolderTree, Plus, LogOut, Sparkles,
   Settings, Menu, X
 } from "lucide-react";
+import { getFirestore, collection, getDocs } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { BYPASS_AUTH } from "@/lib/auth-mode";
-import { dataStore } from "@/lib/data-store";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: s => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -24,28 +22,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: years } = useQuery({
     queryKey: ["years-nav"],
     queryFn: async () => {
-      if (BYPASS_AUTH) {
-        return dataStore.getYears();
-      }
-
-      const { data } = await supabase.from("years").select("*").order("year", { ascending: false });
-      return data ?? [];
+      const db = getFirestore(getApp());
+      const snap = await getDocs(collection(db, "years"));
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      return data.sort((a: any, b: any) => b.year - a.year);
     },
   });
 
   const handleLogout = async () => {
-    if (BYPASS_AUTH) {
-      toast.info("Modo desenvolvimento ativo: login desativado temporariamente.");
-      navigate({ to: "/dashboard" });
-      return;
+    try {
+      const auth = getAuth(getApp());
+      await signOut(auth);
+      navigate({ to: "/auth" });
+    } catch (error) {
+      toast.error("Erro ao sair da conta");
     }
-
-    await supabase.auth.signOut();
-    toast.success("Até breve!");
-    navigate({ to: "/auth" });
   };
 
-  const userEmail = user?.email ?? (BYPASS_AUTH ? "dev@local" : undefined);
+  const userEmail = getAuth(getApp()).currentUser?.email;
 
   const nav = [
     { to: "/dashboard", label: "Visão geral", icon: LayoutDashboard },
@@ -122,7 +116,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="p-3 border-t border-border/50">
           <div className="flex items-center gap-3 px-3 py-2 mb-2">
             <div className="w-9 h-9 rounded-full grid place-items-center text-sm font-semibold" style={{ background: "var(--gradient-primary)", color: "var(--primary-foreground)" }}>
-              {user?.email?.[0]?.toUpperCase() ?? "?"}
+              {userEmail?.[0]?.toUpperCase() ?? "?"}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{userEmail}</p>
