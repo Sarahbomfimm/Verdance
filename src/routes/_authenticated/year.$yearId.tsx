@@ -204,17 +204,37 @@ function YearView() {
           <h3 className="font-display font-bold text-lg mb-1">Distribuição</h3>
           <p className="text-sm text-muted-foreground mb-4">Por categoria</p>
           {pieData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={3}>
-                  {pieData.map((d, i) => <Cell key={i} fill={d.color} stroke="none" />)}
+            <ResponsiveContainer width="100%" height={340}>
+              <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                <Pie
+                  data={pieData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy={110}
+                  innerRadius={50}
+                  outerRadius={75}
+                  paddingAngle={2}
+                >
+                  {pieData.map((d, i) => (
+                    <Cell key={i} fill={d.color} stroke="none" />
+                  ))}
                 </Pie>
                 <Tooltip content={<DistributionTooltip />} formatter={(v: number) => fmtBRL(v)} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Legend
+                  iconType="circle"
+                  iconSize={8}
+                  wrapperStyle={{
+                    paddingTop: 16,
+                    fontSize: 11,
+                  }}
+                />
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[260px] grid place-items-center text-muted-foreground text-sm text-center px-4">Registre compras para ver a distribuição</div>
+            <div className="h-[340px] grid place-items-center text-muted-foreground text-sm text-center px-4">
+              Registre compras para ver a distribuição
+            </div>
           )}
         </Card>
       </div>
