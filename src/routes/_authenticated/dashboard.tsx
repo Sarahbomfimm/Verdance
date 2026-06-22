@@ -41,7 +41,8 @@ function Dashboard() {
       const db = getFirestore(getApp());
       const snap = await getDocs(collection(db, "purchases"));
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-      return data.sort((a: any, b: any) => new Date(b.purchase_date).getTime() - new Date(a.purchase_date).getTime());
+      console.log("DB Purchases:", data);
+      return data.sort((a: any, b: any) => (b.purchase_date || "").localeCompare(a.purchase_date || ""));
     },
   });
 
@@ -87,7 +88,9 @@ function Dashboard() {
   const monthlyByIndex = Array.from({ length: 12 }, () => 0);
   if (currentYear) {
     purchases.filter(p => p.year_id === currentYear.id).forEach(p => {
-      const monthIndex = new Date(p.purchase_date).getMonth();
+      const monthIndex = p.purchase_date && p.purchase_date.includes("-")
+        ? parseInt(p.purchase_date.split("-")[1], 10) - 1
+        : new Date(p.purchase_date).getMonth();
       monthlyByIndex[monthIndex] += parseFloat(p.amount as any);
     });
   }
@@ -279,3 +282,4 @@ function Kpi({ label, value, icon: Icon, accent, sub }: any) {
 function EmptyChart({ msg }: { msg: string }) {
   return <div className="h-[260px] grid place-items-center text-muted-foreground text-sm">{msg}</div>;
 }
+

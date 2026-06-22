@@ -24,6 +24,13 @@ export const Route = createFileRoute("/_authenticated/category/$categoryId")({
   component: CategoryView,
 });
 
+const getLocalISODate = (date = new Date()) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
 function CategoryView() {
   const { categoryId } = Route.useParams();
   const qc = useQueryClient();
@@ -73,7 +80,7 @@ function CategoryView() {
       prodSnap.docs.forEach(d => prodMap[d.id] = d.data().name);
       
       purchases = purchases.map((p: any) => ({ ...p, products: { name: p.product_id ? prodMap[p.product_id] : null } }));
-      return purchases.sort((a: any, b: any) => new Date(b.purchase_date).getTime() - new Date(a.purchase_date).getTime());
+      return purchases.sort((a: any, b: any) => (b.purchase_date || "").localeCompare(a.purchase_date || ""));
     },
   });
 
@@ -428,7 +435,7 @@ function PurchaseDialog({ open, setOpen, category, products, editing }: any) {
   const qc = useQueryClient();
   const [productId, setProductId] = useState<string>("");
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(getLocalISODate());
   const [notes, setNotes] = useState("");
   const [installments, setInstallments] = useState("1");
 
@@ -436,7 +443,7 @@ function PurchaseDialog({ open, setOpen, category, products, editing }: any) {
     if (!open) return;
     setProductId(editing?.product_id ?? "");
     setAmount(editing?.amount?.toString() ?? "");
-    setDate(editing?.purchase_date ?? new Date().toISOString().split("T")[0]);
+    setDate(editing?.purchase_date ?? getLocalISODate());
     setNotes(editing?.notes ?? "");
     setInstallments("1");
   }, [open, editing]);
@@ -501,7 +508,7 @@ function PurchaseDialog({ open, setOpen, category, products, editing }: any) {
       setOpen(false);
       setProductId("");
       setAmount("");
-      setDate(new Date().toISOString().split("T")[0]);
+      setDate(getLocalISODate());
       setNotes("");
       setInstallments("1");
     },
@@ -521,7 +528,7 @@ function PurchaseDialog({ open, setOpen, category, products, editing }: any) {
       setOpen(false);
       setProductId("");
       setAmount("");
-      setDate(new Date().toISOString().split("T")[0]);
+      setDate(getLocalISODate());
       setNotes("");
       setInstallments("1");
     },
@@ -533,7 +540,7 @@ function PurchaseDialog({ open, setOpen, category, products, editing }: any) {
       if (!o) {
         setProductId("");
         setAmount("");
-        setDate(new Date().toISOString().split("T")[0]);
+        setDate(getLocalISODate());
         setNotes("");
         setInstallments("1");
       }
