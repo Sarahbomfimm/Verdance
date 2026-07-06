@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Plus, TrendingUp, Wallet, Target, ArrowUpRight, Calendar, Sparkles } from "lucide-react";
+import { Plus, TrendingUp, Wallet, Target, ArrowUpRight, Calendar, Sparkles, Printer } from "lucide-react";
 import { fmtBRL, fmtCompact } from "@/lib/format";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, CartesianGrid } from "recharts";
 import { toast } from "sonner";
@@ -114,33 +114,38 @@ function Dashboard() {
           </h1>
         </div>
 
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="font-semibold shadow-glow" style={{ background: "var(--gradient-primary)" }}>
-              <Plus className="w-4 h-4 mr-2" /> Novo ano
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="glass-strong border-border/50">
-            <DialogHeader>
-              <DialogTitle>Novo ano de investimento</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Ano</Label>
-                <Input type="number" value={newYear} onChange={e => setNewYear(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Orçamento total previsto (R$)</Label>
-                <Input type="number" step="0.01" value={newBudget} onChange={e => setNewBudget(e.target.value)} placeholder="0,00" />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={() => createYear.mutate()} disabled={createYear.isPending} style={{ background: "var(--gradient-primary)" }} className="font-semibold">
-                Criar ano
+        <div className="flex gap-2 print:hidden">
+          <Button variant="outline" onClick={() => window.print()} className="border-border/60">
+            <Printer className="w-4 h-4 mr-2" /> Imprimir
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="font-semibold shadow-glow" style={{ background: "var(--gradient-primary)" }}>
+                <Plus className="w-4 h-4 mr-2" /> Novo ano
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="glass-strong border-border/50">
+              <DialogHeader>
+                <DialogTitle>Novo ano de investimento</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Ano</Label>
+                  <Input type="number" value={newYear} onChange={e => setNewYear(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Orçamento total previsto (R$)</Label>
+                  <Input type="number" step="0.01" value={newBudget} onChange={e => setNewBudget(e.target.value)} placeholder="0,00" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={() => createYear.mutate()} disabled={createYear.isPending} style={{ background: "var(--gradient-primary)" }} className="font-semibold">
+                  Criar ano
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* KPI cards */}
@@ -217,7 +222,7 @@ function Dashboard() {
             </div>
             <h3 className="font-display font-bold text-xl mb-2">Comece sua jornada</h3>
             <p className="text-muted-foreground mb-6">Crie seu primeiro ano de investimento para acompanhar tudo.</p>
-            <Button onClick={() => setOpen(true)} style={{ background: "var(--gradient-primary)" }} className="font-semibold">
+            <Button onClick={() => setOpen(true)} style={{ background: "var(--gradient-primary)" }} className="font-semibold print:hidden">
               <Plus className="w-4 h-4 mr-2" /> Criar primeiro ano
             </Button>
           </Card>
@@ -235,7 +240,7 @@ function Dashboard() {
                         <p className="text-xs uppercase tracking-wider text-muted-foreground">Ano</p>
                         <p className="font-display text-3xl font-bold">{y.year}</p>
                       </div>
-                      <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                      <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors print:hidden" />
                     </div>
                     <div className="space-y-3">
                       <div className="flex items-baseline justify-between text-sm">

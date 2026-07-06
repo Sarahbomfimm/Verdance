@@ -49,7 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex">
       {/* Sidebar */}
       <aside className={cn(
-        "fixed lg:sticky top-0 left-0 z-50 h-screen w-72 shrink-0 transition-transform glass-strong border-r border-border/50 flex flex-col",
+        "fixed lg:sticky top-0 left-0 z-50 h-screen w-72 shrink-0 transition-transform glass-strong border-r border-border/50 flex flex-col print:hidden",
         mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
         <div className="p-6 flex items-center justify-between">
@@ -133,7 +133,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main */}
       <main className="flex-1 min-w-0 flex flex-col">
-        <header className="lg:hidden glass border-b border-border/50 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+        <header className="lg:hidden glass border-b border-border/50 px-4 py-3 flex items-center justify-between sticky top-0 z-30 print:hidden">
           <button onClick={() => setMobileOpen(true)} className="p-2 -ml-2">
             <Menu className="w-5 h-5" />
           </button>

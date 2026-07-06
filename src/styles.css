@@ -177,3 +177,114 @@
   background-size: 200% 100%;
   animation: shimmer 2s linear infinite;
 }
+
+@media print {
+  /* Set exact color printing for backgrounds and text colors */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html, body {
+    background-color: white !important;
+    background-image: none !important;
+    color: #0f172a !important;
+  }
+
+  /* Remove sidebar, headers, and actions */
+  aside, header, nav, button, .print\:hidden, a[href*="dashboard"] {
+    display: none !important;
+  }
+
+  /* Make sure main content container has zero margins/paddings and is full width */
+  .max-w-7xl, main, .px-6, .pb-6, .pt-10, .lg:px-10, .lg:pb-10, .lg:pt-16 {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Hero card design for print (the year summary card) */
+  .relative.overflow-hidden.rounded-3xl.glass-strong {
+    background-color: #f8fafc !important;
+    background-image: none !important;
+    border: 2px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    color: #0f172a !important;
+    padding: 24px !important;
+    margin-bottom: 24px !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Text gradients should render as dark solid text */
+  .text-gradient-primary {
+    background: none !important;
+    -webkit-background-clip: unset !important;
+    background-clip: unset !important;
+    color: #059669 !important;
+    font-weight: 800 !important;
+  }
+
+  /* General typography */
+  h1, h2, h3, h4, h5, p, span, label, th, td {
+    color: #0f172a !important;
+  }
+
+  .text-muted-foreground {
+    color: #475569 !important;
+  }
+
+  /* Progress Bar Track */
+  .bg-secondary, .bg-secondary\/60 {
+    background-color: #e2e8f0 !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  /* Progress Bar Fill */
+  .h-full.rounded-full {
+    background-image: var(--gradient-primary) !important;
+  }
+
+  /* Category card style for print */
+  .glass-strong {
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    border-radius: 12px !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Category grid layout - force columns to fit on the print page cleanly */
+  .grid.gap-3.sm:grid-cols-2 {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  /* Year grid in dashboard */
+  .grid.gap-4.md:grid-cols-2.lg:grid-cols-3 {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 16px !important;
+  }
+
+  /* KPI cards */
+  .grid.gap-4.md:grid-cols-2.lg:grid-cols-4 {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  /* Distribution side card */
+  .lg:col-span-1, .h-\[480px\] {
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* SVG elements */
+  text, .recharts-text, .recharts-label, .recharts-legend-item-text {
+    fill: #0f172a !important;
+    color: #0f172a !important;
+  }
+}
+
