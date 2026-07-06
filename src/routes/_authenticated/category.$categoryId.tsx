@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, ArrowLeft, Pencil, Trash2, Package, ShoppingCart, MessageSquareText, Filter } from "lucide-react";
+import { Plus, ArrowLeft, Pencil, Trash2, Package, ShoppingCart, MessageSquareText, Filter, Printer } from "lucide-react";
 import { fmtBRL, fmtDate } from "@/lib/format";
 import { toast } from "sonner";
 import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, deleteDoc, addDoc, query, where } from "firebase/firestore";
@@ -117,9 +117,14 @@ function CategoryView() {
 
   return (
     <div className="px-6 pb-6 pt-10 lg:px-10 lg:pb-10 lg:pt-16 max-w-7xl mx-auto space-y-8">
-      <Link to="/year/$yearId" params={{ yearId: category?.year_id ?? "" }} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="w-4 h-4" /> Voltar para {category?.years?.year ?? "ano"}
-      </Link>
+      <div className="flex items-center justify-between print:hidden">
+        <Link to="/year/$yearId" params={{ yearId: category?.year_id ?? "" }} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="w-4 h-4" /> Voltar para {category?.years?.year ?? "ano"}
+        </Link>
+        <Button variant="outline" onClick={() => window.print()} className="border-border/60">
+          <Printer className="w-4 h-4 mr-2" /> Imprimir
+        </Button>
+      </div>
 
       {/* Hero */}
       <div className="relative overflow-hidden rounded-3xl glass-strong border border-border/50 p-8 lg:p-10">
@@ -160,7 +165,7 @@ function CategoryView() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display font-bold text-2xl">Produtos</h2>
-          <Button onClick={() => { setEditProd(null); setProdOpen(true); }} variant="outline" className="border-border/60">
+          <Button onClick={() => { setEditProd(null); setProdOpen(true); }} variant="outline" className="border-border/60 print:hidden">
             <Plus className="w-4 h-4 mr-2" /> Novo produto
           </Button>
         </div>
@@ -175,7 +180,7 @@ function CategoryView() {
             {products.map(p => {
               const spent = purchases.filter(pu => pu.product_id === p.id).reduce((s, pu) => s + parseFloat(pu.amount as any), 0);
               const pb = parseFloat(p.budget as any);
-              const ppct = pb > 0 ? Math.min(100, (spent / pb) * 100) : 0;
+              const ppct = pb > 0 ? Math.min(100, (spent / pb) * 100) : (spent > 0 ? 100 : 0);
               return (
                 <Card key={p.id} className="glass-strong border-border/50 p-4 group hover:border-primary/40 transition-all">
                   <div className="flex items-start justify-between mb-3">
@@ -183,7 +188,7 @@ function CategoryView() {
                       <p className="font-display font-semibold">{p.name}</p>
                       <p className="text-xs text-muted-foreground number-tabular mt-0.5">{fmtBRL(spent)} / {fmtBRL(pb)}</p>
                     </div>
-                    <button onClick={() => { setEditProd(p); setProdOpen(true); }} className="opacity-0 group-hover:opacity-100 transition p-1.5 hover:bg-secondary rounded">
+                    <button onClick={() => { setEditProd(p); setProdOpen(true); }} className="opacity-0 group-hover:opacity-100 transition p-1.5 hover:bg-secondary rounded print:hidden">
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -194,7 +199,7 @@ function CategoryView() {
                     <p className="text-xs text-muted-foreground">{purchases.filter(pu => pu.product_id === p.id).length} compras</p>
                     <button
                       onClick={() => setSelectedProduct(p)}
-                      className="text-xs font-medium text-primary hover:underline"
+                      className="text-xs font-medium text-primary hover:underline print:hidden"
                     >
                       Ver compras
                     </button>
@@ -207,7 +212,7 @@ function CategoryView() {
       </div>
 
       {/* Purchases */}
-      <div className="space-y-4">
+      <div className="space-y-4 print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h2 className="font-display font-bold text-2xl">Compras</h2>
           <div className="flex items-center gap-2">
@@ -312,6 +317,10 @@ function CategoryView() {
         product={selectedProduct}
         purchases={purchases.filter(p => p.product_id === selectedProduct?.id)}
       />
+
+      <div className="hidden print:block text-right text-xs text-muted-foreground border-t border-border/20 pt-4 mt-8">
+        Relatório gerado em {new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+      </div>
     </div>
   );
 }

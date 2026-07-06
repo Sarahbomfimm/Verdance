@@ -167,7 +167,7 @@ function YearView() {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {byCat.map(c => {
-                const pct = c.budgetN > 0 ? Math.min(100, (c.spent / c.budgetN) * 100) : 0;
+                const pct = c.budgetN > 0 ? Math.min(100, (c.spent / c.budgetN) * 100) : (c.spent > 0 ? 100 : 0);
                 return (
                   <Card key={c.id} className="glass-strong border-border/50 p-5 hover:border-primary/40 hover:shadow-glow transition-all group">
                     <div className="flex items-start justify-between mb-3">
@@ -264,6 +264,10 @@ function YearView() {
 
       <CategoryDialog open={catOpen} setOpen={setCatOpen} yearId={yearId} editing={editCat} />
       <EditYearDialog open={editYearOpen} setOpen={setEditYearOpen} year={year} />
+
+      <div className="hidden print:block text-right text-xs text-muted-foreground border-t border-border/20 pt-4 mt-8">
+        Relatório gerado em {new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+      </div>
     </div>
   );
 }

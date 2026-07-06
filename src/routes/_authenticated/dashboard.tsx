@@ -231,7 +231,7 @@ function Dashboard() {
             {years.map(y => {
               const spent = purchases.filter(p => p.year_id === y.id).reduce((s, p) => s + parseFloat(p.amount as any), 0);
               const budget = parseFloat(y.total_budget as any);
-              const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
+              const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : (spent > 0 ? 100 : 0);
               return (
                 <Link key={y.id} to="/year/$yearId" params={{ yearId: y.id }}>
                   <Card className="glass-strong border-border/50 p-6 hover:border-primary/40 transition-all hover:shadow-glow group cursor-pointer h-full">
@@ -262,6 +262,10 @@ function Dashboard() {
             })}
           </div>
         )}
+      </div>
+
+      <div className="hidden print:block text-right text-xs text-muted-foreground border-t border-border/20 pt-4 mt-8">
+        Relatório gerado em {new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
       </div>
     </div>
   );
