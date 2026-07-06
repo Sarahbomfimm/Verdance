@@ -49,6 +49,62 @@
 :root {
   --radius: 0.875rem;
 
+  /* Deep emerald light mode palette */
+  --background: oklch(0.98 0.005 180);
+  --foreground: oklch(0.20 0.02 180);
+
+  --surface: oklch(0.95 0.008 180);
+  --surface-elevated: oklch(0.97 0.005 180);
+
+  --card: oklch(0.99 0.002 180);
+  --card-foreground: oklch(0.20 0.02 180);
+
+  --popover: oklch(0.99 0.002 180);
+  --popover-foreground: oklch(0.20 0.02 180);
+
+  /* A darker emerald green for primary in light mode for readability */
+  --primary: oklch(0.45 0.14 162);
+  --primary-foreground: oklch(0.99 0.002 180);
+
+  --emerald: oklch(0.45 0.14 162);
+  --gold: oklch(0.68 0.12 88);
+
+  --secondary: oklch(0.92 0.008 180);
+  --secondary-foreground: oklch(0.20 0.02 180);
+
+  --muted: oklch(0.90 0.01 180);
+  --muted-foreground: oklch(0.48 0.025 180);
+
+  --accent: oklch(0.68 0.12 88);
+  --accent-foreground: oklch(0.99 0.002 180);
+
+  --success: oklch(0.45 0.14 162);
+  --warning: oklch(0.68 0.14 70);
+  --destructive: oklch(0.60 0.20 22);
+  --destructive-foreground: oklch(0.99 0.002 180);
+
+  --border: oklch(0.85 0.01 180 / 80%);
+  --input: oklch(0.92 0.008 180);
+  --ring: oklch(0.45 0.14 162);
+
+  --chart-1: oklch(0.45 0.14 162);
+  --chart-2: oklch(0.68 0.12 88);
+  --chart-3: oklch(0.55 0.15 220);
+  --chart-4: oklch(0.60 0.16 320);
+  --chart-5: oklch(0.62 0.16 30);
+
+  --gradient-primary: linear-gradient(135deg, oklch(0.45 0.14 162) 0%, oklch(0.68 0.12 88) 100%);
+  --gradient-surface: linear-gradient(180deg, oklch(0.95 0.008 180) 0%, oklch(0.99 0.002 180) 100%);
+  --gradient-hero: radial-gradient(ellipse at top left, oklch(0.45 0.14 162 / 0.10), transparent 55%),
+                   radial-gradient(ellipse at bottom right, oklch(0.68 0.12 88 / 0.08), transparent 55%);
+  --gradient-glow: radial-gradient(circle at center, oklch(0.45 0.14 162 / 0.20), transparent 70%);
+
+  --shadow-elegant: 0 10px 30px -10px oklch(0 0 0 / 0.08), 0 0 0 1px oklch(0 0 0 / 0.04);
+  --shadow-glow: 0 0 30px -5px oklch(0.45 0.14 162 / 0.25);
+  --shadow-gold: 0 0 25px -5px oklch(0.68 0.12 88 / 0.25);
+}
+
+.dark {
   /* Deep emerald-noir investment palette */
   --background: oklch(0.16 0.018 180);
   --foreground: oklch(0.97 0.01 180);
@@ -103,15 +159,16 @@
   --shadow-gold: 0 0 30px -5px oklch(0.83 0.13 88 / 0.4);
 }
 
-.dark {
-  /* Same — dark by default */
-  --background: oklch(0.16 0.018 180);
-  --foreground: oklch(0.97 0.01 180);
-}
-
 @layer base {
   * {
     border-color: var(--color-border);
+  }
+
+  button, a, [role="button"] {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
   }
 
   html, body {
@@ -197,7 +254,7 @@
   }
 
   /* Make sure main content container has zero margins/paddings and is full width */
-  .max-w-7xl, main, .px-6, .pb-6, .pt-10, .lg:px-10, .lg:pb-10, .lg:pt-16 {
+  .max-w-7xl, main, .px-6, .pb-6, .pt-10, .lg\:px-10, .lg\:pb-10, .lg\:pt-16 {
     max-width: 100% !important;
     width: 100% !important;
     padding: 0 !important;
@@ -254,36 +311,50 @@
     backdrop-filter: none !important;
   }
 
+  /* Prevent cards and charts from being cut in half during page breaks */
+  .glass, .glass-strong, [class*="glass"], .recharts-wrapper, Card {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
   /* Category grid layout - force columns to fit on the print page cleanly */
-  .grid.gap-3.sm:grid-cols-2 {
+  .grid.gap-3.sm\:grid-cols-2 {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 12px !important;
   }
 
   /* Year grid in dashboard */
-  .grid.gap-4.md:grid-cols-2.lg:grid-cols-3 {
+  .grid.gap-4.md\:grid-cols-2.lg\:grid-cols-3 {
     display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 16px !important;
   }
 
   /* Products grid in category page */
-  .grid.gap-3.sm:grid-cols-2.lg:grid-cols-3 {
+  .grid.gap-3.sm\:grid-cols-2.lg\:grid-cols-3 {
     display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 12px !important;
   }
 
   /* KPI cards */
-  .grid.gap-4.md:grid-cols-2.lg:grid-cols-4 {
+  .grid.gap-4.md\:grid-cols-2.lg\:grid-cols-4 {
     display: grid !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 12px !important;
   }
 
+  /* Adjust KPI text sizes for better fit on paper */
+  .glass-strong p.text-2xl, .glass-strong p.text-3xl {
+    font-size: 1.35rem !important;
+  }
+  .glass-strong p.text-4xl, .glass-strong p.text-5xl, .glass-strong p.text-6xl {
+    font-size: 1.75rem !important;
+  }
+
   /* Distribution side card */
-  .lg:col-span-1, .h-\[480px\] {
+  .lg\:col-span-1, .h-\[480px\] {
     height: auto !important;
     max-height: none !important;
   }

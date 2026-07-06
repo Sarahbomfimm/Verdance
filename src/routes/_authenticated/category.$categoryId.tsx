@@ -326,23 +326,70 @@ function CategoryView() {
 }
 
 function ProductPurchasesDialog({ open, setOpen, product, purchases }: any) {
+  const totalAmount = purchases.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="glass-strong border-border/50 max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Compras de {product?.name}</DialogTitle>
+      <DialogContent className="glass-strong border-border/50 max-w-2xl flex flex-col max-h-[85vh]">
+        <DialogHeader className="pb-2 border-b border-border/30">
+          <DialogTitle className="flex justify-between items-baseline pr-6">
+            <span>Compras: <span className="text-primary">{product?.name}</span></span>
+            <span className="text-xs font-normal text-muted-foreground">{purchases.length} {purchases.length === 1 ? "compra" : "compras"}</span>
+          </DialogTitle>
         </DialogHeader>
-        <div className="space-y-3 py-4 max-h-[60vh] overflow-y-auto pr-1">
+
+        {/* Total Summary Card */}
+        {purchases.length > 0 && (
+          <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex flex-wrap gap-6 justify-between items-center my-2 shrink-0">
+            <div className="flex gap-8 flex-wrap">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Total Investido</p>
+                <p className="text-2xl font-display font-bold text-primary number-tabular">{fmtBRL(totalAmount)}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Orçado</p>
+                <p className="text-2xl font-display font-bold text-muted-foreground number-tabular">
+                  {fmtBRL(parseFloat(product?.budget as any) || 0)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Disponível</p>
+                <p className={`text-2xl font-display font-bold number-tabular ${(parseFloat(product?.budget as any) || 0) - totalAmount >= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                  {fmtBRL((parseFloat(product?.budget as any) || 0) - totalAmount)}
+                </p>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-primary/10 grid place-items-center text-primary shrink-0">
+              <ShoppingCart className="w-5 h-5" />
+            </div>
+          </div>
+        )}
+
+        {/* Scrollable list */}
+        <div className="flex-1 overflow-y-auto pr-1 space-y-2 mt-2 scrollbar-thin">
           {purchases.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma compra registrada para este produto.</p>
+            <div className="py-8 text-center text-muted-foreground">
+              <ShoppingCart className="w-8 h-8 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">Nenhuma compra registrada para este produto.</p>
+            </div>
           ) : (
             purchases.map((purchase: any) => (
-              <div key={purchase.id} className="flex items-start justify-between gap-4 rounded-2xl border border-border/60 bg-background/40 p-4">
-                <div>
-                  <p className="font-medium">{fmtDate(purchase.purchase_date)}</p>
-                  <p className="text-xs text-muted-foreground">{purchase.notes || "Sem observações"}</p>
+              <div key={purchase.id} className="flex items-center justify-between gap-4 rounded-xl border border-border/40 bg-background/35 p-3.5 hover:bg-secondary/25 transition">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide bg-secondary/80 text-muted-foreground px-2 py-0.5 rounded-full shrink-0">
+                      {fmtDate(purchase.purchase_date)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-foreground/90 font-medium break-words whitespace-pre-wrap leading-relaxed pr-2">
+                    {purchase.notes || <span className="text-muted-foreground italic text-xs">Sem descrição</span>}
+                  </p>
                 </div>
-                <p className="font-display font-bold number-tabular">{fmtBRL(purchase.amount)}</p>
+                <div className="text-right shrink-0">
+                  <span className="inline-block font-display font-bold text-base text-foreground number-tabular bg-secondary/30 px-3 py-1 rounded-lg">
+                    {fmtBRL(purchase.amount)}
+                  </span>
+                </div>
               </div>
             ))
           )}

@@ -4,18 +4,20 @@ import { getAuth, signOut } from "firebase/auth";
 import { getApp } from "firebase/app";
 import {
   LayoutDashboard, Calendar, FolderTree, Plus, LogOut, Sparkles,
-  Settings, Menu, X
+  Settings, Menu, X, Sun, Moon
 } from "lucide-react";
 import { getFirestore, collection, getDocs } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useTheme } from "../hooks/useTheme";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: s => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { theme, toggle } = useTheme();
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
@@ -123,6 +125,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <p className="text-xs text-muted-foreground">Investidor</p>
             </div>
           </div>
+          <Button onClick={toggle} variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground mb-1">
+            {theme === "dark" ? (
+              <>
+                <Sun className="w-4 h-4 mr-2" /> Modo claro
+              </>
+            ) : (
+              <>
+                <Moon className="w-4 h-4 mr-2" /> Modo escuro
+              </>
+            )}
+          </Button>
           <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive">
             <LogOut className="w-4 h-4 mr-2" /> Sair
           </Button>
@@ -134,7 +147,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Main */}
       <main className="flex-1 min-w-0 flex flex-col">
         <header className="lg:hidden glass border-b border-border/50 px-4 py-3 flex items-center justify-between sticky top-0 z-30 print:hidden">
-          <button onClick={() => setMobileOpen(true)} className="p-2 -ml-2">
+          <button onClick={() => setMobileOpen(true)} className="p-2 -mr-2">
             <Menu className="w-5 h-5" />
           </button>
           <Link to="/dashboard" className="flex items-center gap-2">
@@ -143,7 +156,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             <span className="font-display font-bold">Verdance</span>
           </Link>
-          <div className="w-9" />
+          <button onClick={toggle} className="p-2 text-muted-foreground hover:text-foreground shrink-0">
+            {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
         </header>
         <div className="flex-1">{children}</div>
       </main>
