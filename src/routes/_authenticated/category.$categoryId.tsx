@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, ArrowLeft, Pencil, Trash2, Package, ShoppingCart, MessageSquareText, Filter, Printer } from "lucide-react";
+import { Plus, ArrowLeft, Pencil, Trash2, Package, ShoppingCart, MessageSquareText, Filter, Printer, Search, X } from "lucide-react";
 import { fmtBRL, fmtDate } from "@/lib/format";
 import { toast } from "sonner";
 import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, deleteDoc, addDoc, query, where } from "firebase/firestore";
@@ -40,6 +40,10 @@ function CategoryView() {
   const [editPurch, setEditPurch] = useState<any>(null);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [productSearch, setProductSearch] = useState("");
+  const [purchaseSearch, setPurchaseSearch] = useState("");
+  const [showProductSearch, setShowProductSearch] = useState(false);
+  const [showPurchaseSearch, setShowPurchaseSearch] = useState(false);
 
   const { data: category } = useQuery({
     queryKey: ["category", categoryId],
@@ -99,7 +103,20 @@ function CategoryView() {
     return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
   };
 
+  const filteredProducts = products.filter((p: any) =>
+    (p.name || "").toLowerCase().includes(productSearch.toLowerCase())
+  );
+
   const filteredPurchases = purchases.filter((p: any) => {
+    if (purchaseSearch) {
+      const searchLower = purchaseSearch.toLowerCase();
+      const prodName = (p.products?.name || "").toLowerCase();
+      const notes = (p.notes || "").toLowerCase();
+      if (!prodName.includes(searchLower) && !notes.includes(searchLower)) {
+        return false;
+      }
+    }
+
     if (!dateRange?.from) return true;
     
     const pDate = p.purchase_date;
@@ -163,11 +180,55 @@ function CategoryView() {
 
       {/* Products */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display font-bold text-2xl">Produtos</h2>
-          <Button onClick={() => { setEditProd(null); setProdOpen(true); }} variant="outline" className="border-border/60 print:hidden">
-            <Plus className="w-4 h-4 mr-2" /> Novo produto
-          </Button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4 flex-1">
+            <h2 className="font-display font-bold text-2xl">Produtos</h2>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {products.length > 0 && (
+              <>
+                {showProductSearch ? (
+                  <div className="relative max-w-xs w-full flex items-center gap-2 animate-in fade-in slide-in-from-right-2 duration-200 print:hidden">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Pesquisar produtos..."
+                      value={productSearch}
+                      onChange={(e) => setProductSearch(e.target.value)}
+                      className="pl-9 h-9 bg-background/50 border-border/40 focus:border-primary/50 w-[180px] sm:w-[240px]"
+                      autoFocus
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setProductSearch("");
+                        setShowProductSearch(false);
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className={cn(
+                      "border-border/60 hover:bg-secondary/60 h-9 w-9 shrink-0 print:hidden",
+                      productSearch && "border-primary/50 bg-primary/5 text-primary"
+                    )}
+                    onClick={() => setShowProductSearch(true)}
+                    title="Pesquisar produtos"
+                  >
+                    <Search className="w-4 h-4" />
+                  </Button>
+                )}
+              </>
+            )}
+            <Button onClick={() => { setEditProd(null); setProdOpen(true); }} variant="outline" className="border-border/60 print:hidden shrink-0">
+              <Plus className="w-4 h-4 mr-2" /> Novo produto
+            </Button>
+          </div>
         </div>
 
         {products.length === 0 ? (
@@ -175,9 +236,14 @@ function CategoryView() {
             <Package className="w-10 h-10 mx-auto mb-3" />
             <p>Crie produtos dentro desta categoria com seus orçamentos próprios.</p>
           </Card>
+        ) : filteredProducts.length === 0 ? (
+          <Card className="glass border-dashed border-2 border-border/50 p-8 text-center text-muted-foreground">
+            <Package className="w-10 h-10 mx-auto mb-3 opacity-40" />
+            <p>Nenhum produto encontrado para a pesquisa "{productSearch}".</p>
+          </Card>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {products.map(p => {
+            {filteredProducts.map(p => {
               const spent = purchases.filter(pu => pu.product_id === p.id).reduce((s, pu) => s + parseFloat(pu.amount as any), 0);
               const pb = parseFloat(p.budget as any);
               const ppct = pb > 0 ? Math.min(100, (spent / pb) * 100) : (spent > 0 ? 100 : 0);
@@ -213,9 +279,52 @@ function CategoryView() {
 
       {/* Purchases */}
       <div className="space-y-4 print:hidden">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h2 className="font-display font-bold text-2xl">Compras</h2>
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4 flex-1">
+            <h2 className="font-display font-bold text-2xl">Compras</h2>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {purchases.length > 0 && (
+              <>
+                {showPurchaseSearch ? (
+                  <div className="relative max-w-xs w-full flex items-center gap-2 animate-in fade-in slide-in-from-right-2 duration-200">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Pesquisar compras..."
+                      value={purchaseSearch}
+                      onChange={(e) => setPurchaseSearch(e.target.value)}
+                      className="pl-9 h-9 bg-background/50 border-border/40 focus:border-primary/50 w-[180px] sm:w-[240px]"
+                      autoFocus
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setPurchaseSearch("");
+                        setShowPurchaseSearch(false);
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className={cn(
+                      "border-border/60 hover:bg-secondary/60 h-9 w-9 shrink-0",
+                      purchaseSearch && "border-primary/50 bg-primary/5 text-primary"
+                    )}
+                    onClick={() => setShowPurchaseSearch(true)}
+                    title="Pesquisar compras"
+                  >
+                    <Search className="w-4 h-4" />
+                  </Button>
+                )}
+              </>
+            )}
+
             {/* Minimalist Date Range Filter Button */}
             <Popover>
               <PopoverTrigger asChild>
@@ -261,9 +370,21 @@ function CategoryView() {
         ) : (
           <div className="space-y-4">
             {/* Filter Summary Badge */}
-            {dateRange?.from && (
+            {(dateRange?.from || purchaseSearch) && (
               <div className="flex items-center justify-between px-4 py-2 bg-secondary/15 rounded-xl border border-border/50 text-xs text-muted-foreground font-medium animate-in fade-in duration-200">
-                <span>Filtro ativo · {dateRange.to ? `${fmtShortDate(dateRange.from)} até ${fmtShortDate(dateRange.to)}` : fmtShortDate(dateRange.from)}</span>
+                <span className="flex items-center gap-1.5 flex-wrap">
+                  <span>Filtro ativo</span>
+                  {dateRange?.from && (
+                    <span className="bg-secondary/30 px-2 py-0.5 rounded text-[11px]">
+                      Período: {dateRange.to ? `${fmtShortDate(dateRange.from)} até ${fmtShortDate(dateRange.to)}` : fmtShortDate(dateRange.from)}
+                    </span>
+                  )}
+                  {purchaseSearch && (
+                    <span className="bg-secondary/30 px-2 py-0.5 rounded text-[11px]">
+                      Pesquisa: "{purchaseSearch}"
+                    </span>
+                  )}
+                </span>
                 <span>
                   {filteredPurchases.length} {filteredPurchases.length === 1 ? "compra encontrada" : "compras encontradas"} · Total: <span className="font-semibold text-foreground">{fmtBRL(filteredPurchases.reduce((s, p) => s + parseFloat(p.amount as any), 0))}</span>
                 </span>
@@ -272,8 +393,14 @@ function CategoryView() {
 
             {filteredPurchases.length === 0 ? (
               <Card className="glass border-dashed border-2 border-border/50 p-10 text-center text-muted-foreground">
-                <ShoppingCart className="w-10 h-10 mx-auto mb-3" />
-                <p>Nenhuma compra encontrada para o período selecionado.</p>
+                <ShoppingCart className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                <p>
+                  {dateRange?.from && purchaseSearch
+                    ? "Nenhuma compra encontrada para o período e pesquisa selecionados."
+                    : dateRange?.from
+                    ? "Nenhuma compra encontrada para o período selecionado."
+                    : "Nenhuma compra encontrada para a pesquisa selecionada."}
+                </p>
               </Card>
             ) : (
               <Card className="glass-strong border-border/50 overflow-hidden">
@@ -316,6 +443,20 @@ function CategoryView() {
         setOpen={(open: boolean) => !open && setSelectedProduct(null)}
         product={selectedProduct}
         purchases={purchases.filter(p => p.product_id === selectedProduct?.id)}
+        onDeletePurchase={async (p: any) => {
+          try {
+            const db = getFirestore(getApp());
+            await deleteDoc(doc(db, "purchases", p.id));
+            toast.success("Compra excluída");
+            qc.invalidateQueries({ queryKey: ["purchases-cat", categoryId] });
+            if (category?.year_id) {
+              qc.invalidateQueries({ queryKey: ["purchases-year", category.year_id] });
+            }
+            qc.invalidateQueries({ queryKey: ["all-purchases"] });
+          } catch (err: any) {
+            toast.error("Erro ao excluir: " + err.message);
+          }
+        }}
       />
 
       <div className="hidden print:block text-right text-xs text-muted-foreground border-t border-border/20 pt-4 mt-8">
@@ -325,8 +466,15 @@ function CategoryView() {
   );
 }
 
-function ProductPurchasesDialog({ open, setOpen, product, purchases }: any) {
+function ProductPurchasesDialog({ open, setOpen, product, purchases, onDeletePurchase }: any) {
   const totalAmount = purchases.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0);
+  const [purchaseToDelete, setPurchaseToDelete] = useState<any>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setPurchaseToDelete(null);
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -374,7 +522,7 @@ function ProductPurchasesDialog({ open, setOpen, product, purchases }: any) {
             </div>
           ) : (
             purchases.map((purchase: any) => (
-              <div key={purchase.id} className="flex items-center justify-between gap-4 rounded-xl border border-border/40 bg-background/35 p-3.5 hover:bg-secondary/25 transition">
+              <div key={purchase.id} className="flex items-center justify-between gap-4 rounded-xl border border-border/40 bg-background/35 p-3.5 hover:bg-secondary/25 transition group">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-[10px] font-semibold uppercase tracking-wide bg-secondary/80 text-muted-foreground px-2 py-0.5 rounded-full shrink-0">
@@ -385,10 +533,42 @@ function ProductPurchasesDialog({ open, setOpen, product, purchases }: any) {
                     {purchase.notes || <span className="text-muted-foreground italic text-xs">Sem descrição</span>}
                   </p>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-right shrink-0 flex flex-col items-end gap-1">
                   <span className="inline-block font-display font-bold text-base text-foreground number-tabular bg-secondary/30 px-3 py-1 rounded-lg">
                     {fmtBRL(purchase.amount)}
                   </span>
+                  {onDeletePurchase && (
+                    <div className="text-xs mr-1 min-h-[16px] flex items-center justify-end">
+                      {purchaseToDelete?.id === purchase.id ? (
+                        <div className="flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-200">
+                          <span className="text-muted-foreground font-medium">Excluir?</span>
+                          <button
+                            onClick={() => {
+                              onDeletePurchase(purchase);
+                              setPurchaseToDelete(null);
+                            }}
+                            className="text-destructive font-bold hover:text-destructive/80 transition"
+                          >
+                            Sim
+                          </button>
+                          <span className="text-muted-foreground/30">|</span>
+                          <button
+                            onClick={() => setPurchaseToDelete(null)}
+                            className="text-muted-foreground font-medium hover:text-foreground transition"
+                          >
+                            Não
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setPurchaseToDelete(purchase)}
+                          className="text-destructive/80 hover:text-destructive opacity-0 group-hover:opacity-100 transition"
+                        >
+                          Excluir
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))

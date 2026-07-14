@@ -170,7 +170,7 @@ function Dashboard() {
               <BarChart data={byYear}>
                 <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 0.06)" />
                 <XAxis dataKey="year" stroke="oklch(0.68 0.025 180)" fontSize={12} />
-                <YAxis stroke="oklch(0.68 0.025 180)" fontSize={12} tickFormatter={(v) => fmtCompact(v)} />
+                <YAxis stroke="oklch(0.68 0.025 180)" fontSize={12} tickFormatter={(v) => fmtCompact(v)} width={80} />
                 <Tooltip
                   contentStyle={{ background: "oklch(0.20 0.02 180)", border: "1px solid oklch(1 0 0 / 0.1)", borderRadius: 12 }}
                   formatter={(v: number) => fmtBRL(v)}
@@ -200,7 +200,7 @@ function Dashboard() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 0.06)" />
                 <XAxis dataKey="month" stroke="oklch(0.68 0.025 180)" fontSize={12} />
-                <YAxis stroke="oklch(0.68 0.025 180)" fontSize={12} tickFormatter={(v) => fmtCompact(v)} />
+                <YAxis stroke="oklch(0.68 0.025 180)" fontSize={12} tickFormatter={(v) => fmtCompact(v)} width={80} />
                 <Tooltip
                   contentStyle={{ background: "oklch(0.20 0.02 180)", border: "1px solid oklch(1 0 0 / 0.1)", borderRadius: 12 }}
                   formatter={(v: number) => fmtBRL(v)}
