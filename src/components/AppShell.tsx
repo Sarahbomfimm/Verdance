@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { getAuth, signOut } from "firebase/auth";
 import { getApp } from "firebase/app";
 import {
-  LayoutDashboard, Calendar, FolderTree, Plus, LogOut, Sparkles,
+  LayoutDashboard, Calendar, FolderTree, Plus, LogOut, TrendingUp,
   Settings, Menu, X, Sun, Moon, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { getFirestore, collection, getDocs } from "firebase/firestore";
@@ -84,7 +84,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="w-full flex items-center justify-center relative">
                 <Link to="/dashboard" title="Verdance">
                   <div className="w-9 h-9 rounded-xl grid place-items-center shadow-glow shrink-0 transition-transform hover:scale-105" style={{ background: "var(--gradient-primary)" }}>
-                    <Sparkles className="w-4 h-4 text-primary-foreground" />
+                    <TrendingUp className="w-4 h-4 text-primary-foreground" />
                   </div>
                 </Link>
                 <button onClick={() => setMobileOpen(false)} className="lg:hidden absolute right-0 p-2 text-muted-foreground hover:text-foreground">
@@ -103,7 +103,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="p-4 lg:p-5 flex items-center justify-between shrink-0">
               <Link to="/dashboard" className="flex items-center gap-3 group overflow-hidden">
                 <div className="w-9 h-9 rounded-xl grid place-items-center shadow-glow shrink-0 transition-transform group-hover:scale-105" style={{ background: "var(--gradient-primary)" }}>
-                  <Sparkles className="w-4 h-4 text-primary-foreground" />
+                  <TrendingUp className="w-4 h-4 text-primary-foreground" />
                 </div>
                 <span className="font-display font-bold text-xl tracking-tight animate-in fade-in duration-200 whitespace-nowrap">
                   Verdance
@@ -296,14 +296,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {mobileOpen && <div className="fixed inset-0 bg-background/80 z-40 lg:hidden" onClick={() => setMobileOpen(false)} />}
 
         {/* Main */}
-        <main className="flex-1 min-w-0 flex flex-col">
+        <main className="flex-1 min-w-0 flex flex-col min-h-screen justify-between">
           <header className="lg:hidden glass border-b border-border/50 px-4 py-3 flex items-center justify-between sticky top-0 z-30 print:hidden">
             <button onClick={() => setMobileOpen(true)} className="p-2 -mr-2">
               <Menu className="w-5 h-5" />
             </button>
             <Link to="/dashboard" className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg grid place-items-center" style={{ background: "var(--gradient-primary)" }}>
-                <Sparkles className="w-3.5 h-3.5 text-primary-foreground" />
+                <TrendingUp className="w-3.5 h-3.5 text-primary-foreground" />
               </div>
               <span className="font-display font-bold">Verdance</span>
             </Link>
@@ -312,6 +312,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
           </header>
           <div className="flex-1">{children}</div>
+
+          {/* Centered Page Footer */}
+          <footer className="py-6 px-6 border-t border-border/30 flex items-center justify-center print:hidden">
+            <a href="https://yourpage.com.br" target="_blank" rel="noopener noreferrer" className="yp-footer-link">
+              <span className="yp-footer-text">Desenvolvido por</span>
+              <span translate="no" className="notranslate yp-footer-badge">
+                YourPage
+              </span>
+            </a>
+          </footer>
         </main>
       </div>
     </TooltipProvider>

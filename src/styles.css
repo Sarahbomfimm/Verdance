@@ -387,4 +387,41 @@
   background: color-mix(in oklab, var(--primary) 50%, transparent);
 }
 
+/* YourPage Footer Styles */
+.yp-footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  text-decoration: none;
+  transition: transform 0.25s ease;
+  font-family: var(--font-sans), sans-serif;
+}
+
+.yp-footer-link:hover {
+  transform: translateY(-1px) scale(1.03);
+}
+
+.yp-footer-text {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  font-family: var(--font-sans), sans-serif;
+}
+
+.yp-footer-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 12px;
+  background: linear-gradient(to right, #2563eb, #4f46e5, #9333ea);
+  padding: 3px 12px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #ffffff;
+  box-shadow: 0 2px 8px -1px rgba(79, 70, 229, 0.35);
+  transition: all 0.25s ease;
+}
+
+
+
 
