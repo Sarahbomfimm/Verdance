@@ -79,37 +79,54 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
         >
           {/* Header / Logo */}
-          <div className={cn("p-4 lg:p-5 flex items-center justify-between", collapsed && "lg:px-3")}>
-            <Link to="/dashboard" className="flex items-center gap-3 group overflow-hidden">
-              <div className="w-9 h-9 rounded-xl grid place-items-center shadow-glow shrink-0 transition-transform group-hover:scale-105" style={{ background: "var(--gradient-primary)" }}>
-                <Sparkles className="w-4 h-4 text-primary-foreground" />
+          {collapsed ? (
+            <div className="p-3 flex flex-col items-center gap-2.5 border-b border-border/30 shrink-0">
+              <div className="w-full flex items-center justify-center relative">
+                <Link to="/dashboard" title="Verdance">
+                  <div className="w-9 h-9 rounded-xl grid place-items-center shadow-glow shrink-0 transition-transform hover:scale-105" style={{ background: "var(--gradient-primary)" }}>
+                    <Sparkles className="w-4 h-4 text-primary-foreground" />
+                  </div>
+                </Link>
+                <button onClick={() => setMobileOpen(false)} className="lg:hidden absolute right-0 p-2 text-muted-foreground hover:text-foreground">
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              {!collapsed && (
+              <button
+                onClick={toggleCollapsed}
+                className="hidden lg:flex w-8 h-8 rounded-lg items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition"
+                title="Expandir menu"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="p-4 lg:p-5 flex items-center justify-between shrink-0">
+              <Link to="/dashboard" className="flex items-center gap-3 group overflow-hidden">
+                <div className="w-9 h-9 rounded-xl grid place-items-center shadow-glow shrink-0 transition-transform group-hover:scale-105" style={{ background: "var(--gradient-primary)" }}>
+                  <Sparkles className="w-4 h-4 text-primary-foreground" />
+                </div>
                 <span className="font-display font-bold text-xl tracking-tight animate-in fade-in duration-200 whitespace-nowrap">
                   Verdance
                 </span>
-              )}
-            </Link>
+              </Link>
 
-            <div className="flex items-center gap-1 shrink-0">
-              {/* Desktop Toggle Button */}
-              <button
-                onClick={toggleCollapsed}
-                className="hidden lg:flex p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition"
-                title={collapsed ? "Expandir menu" : "Recolher menu"}
-              >
-                {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-              </button>
-
-              {/* Mobile Close Button */}
-              <button onClick={() => setMobileOpen(false)} className="lg:hidden p-2 -mr-2 text-muted-foreground hover:text-foreground">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={toggleCollapsed}
+                  className="hidden lg:flex p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition"
+                  title="Recolher menu"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button onClick={() => setMobileOpen(false)} className="lg:hidden p-2 -mr-2 text-muted-foreground hover:text-foreground">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Nav Items */}
-          <nav className="px-3 flex-1 overflow-y-auto overflow-x-hidden scrollbar-custom space-y-6">
+          <nav className="px-3 flex-1 overflow-y-auto overflow-x-hidden scrollbar-custom space-y-6 pt-2">
             <div className="space-y-1">
               {nav.map((item, index) => {
                 const active = pathname === item.to;
@@ -118,9 +135,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     key={item.to}
                     to={item.to}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
-                      collapsed && "lg:justify-center lg:px-0",
-                      index === 0 && "mt-1",
+                      "flex items-center transition-all",
+                      collapsed
+                        ? "w-10 h-10 mx-auto justify-center rounded-xl"
+                        : "gap-3 px-3 py-2.5 rounded-xl text-sm font-medium",
+                      index === 0 && !collapsed && "mt-1",
                       active
                         ? "bg-primary/15 text-primary shadow-glow font-semibold"
                         : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
@@ -155,7 +174,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </Link>
                 </div>
               ) : (
-                <div className="hidden lg:block border-t border-border/40 my-3 mx-2" />
+                <div className="hidden lg:block border-t border-border/40 my-2 mx-2" />
               )}
 
               <div className="space-y-1">
@@ -168,8 +187,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       to="/year/$yearId"
                       params={{ yearId: y.id }}
                       className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all group",
-                        collapsed && "lg:justify-center lg:px-0",
+                        "flex items-center transition-all group",
+                        collapsed
+                          ? "w-10 h-10 mx-auto justify-center rounded-xl"
+                          : "gap-3 px-3 py-2 rounded-xl text-sm",
                         active ? "bg-secondary text-foreground font-semibold" : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground"
                       )}
                     >
@@ -198,7 +219,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           {/* Sidebar Footer */}
-          <div className="p-3 border-t border-border/50">
+          <div className="p-3 border-t border-border/50 shrink-0">
             {/* User Info */}
             {!collapsed ? (
               <div className="flex items-center gap-3 px-3 py-2 mb-2 animate-in fade-in duration-200">
@@ -213,8 +234,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="hidden lg:flex items-center justify-center p-2 mb-2">
-                    <div className="w-8 h-8 rounded-full grid place-items-center text-xs font-semibold shrink-0 cursor-pointer" style={{ background: "var(--gradient-primary)", color: "var(--primary-foreground)" }}>
+                  <div className="hidden lg:flex items-center justify-center p-1 mb-2">
+                    <div className="w-9 h-9 rounded-full grid place-items-center text-xs font-semibold shrink-0 cursor-pointer" style={{ background: "var(--gradient-primary)", color: "var(--primary-foreground)" }}>
                       {userEmail?.[0]?.toUpperCase() ?? "?"}
                     </div>
                   </div>
@@ -230,7 +251,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {collapsed ? (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button onClick={toggle} variant="ghost" size="icon" className="hidden lg:flex w-full justify-center text-muted-foreground hover:text-foreground mb-1">
+                  <Button onClick={toggle} variant="ghost" size="icon" className="hidden lg:flex w-10 h-10 mx-auto justify-center text-muted-foreground hover:text-foreground mb-1 rounded-xl">
                     {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                   </Button>
                 </TooltipTrigger>
@@ -256,7 +277,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {collapsed ? (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button onClick={handleLogout} variant="ghost" size="icon" className="hidden lg:flex w-full justify-center text-muted-foreground hover:text-destructive">
+                  <Button onClick={handleLogout} variant="ghost" size="icon" className="hidden lg:flex w-10 h-10 mx-auto justify-center text-muted-foreground hover:text-destructive rounded-xl">
                     <LogOut className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
