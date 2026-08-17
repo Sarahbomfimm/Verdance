@@ -100,7 +100,7 @@ function RootShell({ children }: { children: ReactNode }) {
             __html: `
               (function() {
                 const saved = localStorage.getItem('theme');
-                const isDark = saved === 'dark' || (!saved && true);
+                const isDark = saved === 'dark';
                 if (isDark) {
                   document.documentElement.classList.add('dark');
                 } else {
@@ -124,7 +124,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
-      <Toaster position="top-right" theme="dark" />
+      <Toaster position="top-right" />
     </QueryClientProvider>
   );
 }

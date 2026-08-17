@@ -353,10 +353,11 @@
     font-size: 1.75rem !important;
   }
 
-  /* Distribution side card */
-  .lg\:col-span-1, .h-\[480px\] {
+  /* Distribution side card & scroll containers */
+  .lg\:col-span-1, .h-\[480px\], .max-h-\[480px\], .scrollbar-custom {
     height: auto !important;
     max-height: none !important;
+    overflow: visible !important;
   }
 
   /* SVG elements */
@@ -365,4 +366,25 @@
     color: #0f172a !important;
   }
 }
+
+/* Custom scrollbar utility */
+.scrollbar-custom {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--primary) 30%, transparent) transparent;
+}
+.scrollbar-custom::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-custom::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-custom::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--primary) 30%, transparent);
+  border-radius: 9999px;
+}
+.scrollbar-custom::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--primary) 50%, transparent);
+}
+
 

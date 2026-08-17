@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, ArrowLeft, Pencil, Trash2, Package, ShoppingCart, MessageSquareText, Filter, Printer, Search, X } from "lucide-react";
+import { Plus, ArrowLeft, Pencil, Trash2, Package, ShoppingCart, MessageSquareText, Filter, Printer, Search, X, AlertTriangle } from "lucide-react";
 import { fmtBRL, fmtDate } from "@/lib/format";
 import { toast } from "sonner";
 import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, deleteDoc, addDoc, query, where } from "firebase/firestore";
@@ -173,7 +173,7 @@ function CategoryView() {
           </div>
 
           <div className="h-2.5 rounded-full bg-secondary overflow-hidden">
-            <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${pct}%`, background: category?.color }} />
+            <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${pct}%`, background: catBudget > 0 && totalSpent > catBudget ? "var(--destructive)" : category?.color }} />
           </div>
         </div>
       </div>
@@ -247,25 +247,64 @@ function CategoryView() {
               const spent = purchases.filter(pu => pu.product_id === p.id).reduce((s, pu) => s + parseFloat(pu.amount as any), 0);
               const pb = parseFloat(p.budget as any);
               const ppct = pb > 0 ? Math.min(100, (spent / pb) * 100) : (spent > 0 ? 100 : 0);
+              const isExceeded = pb > 0 && spent > pb;
+              const exceededAmount = spent - pb;
+
               return (
-                <Card key={p.id} className="glass-strong border-border/50 p-4 group hover:border-primary/40 transition-all">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="font-display font-semibold">{p.name}</p>
-                      <p className="text-xs text-muted-foreground number-tabular mt-0.5">{fmtBRL(spent)} / {fmtBRL(pb)}</p>
+                <Card 
+                  key={p.id} 
+                  className={cn(
+                    "glass-strong border-border/50 p-4 group transition-all flex flex-col justify-between relative overflow-hidden",
+                    isExceeded 
+                      ? "border-destructive/40 hover:border-destructive/60 bg-destructive/[0.02]" 
+                      : "hover:border-primary/40"
+                  )}
+                >
+                  <div>
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <p className="font-display font-semibold">{p.name}</p>
+                        <p className="text-xs number-tabular mt-0.5">
+                          <span className={cn(isExceeded ? "text-destructive font-semibold" : "text-muted-foreground")}>
+                            {fmtBRL(spent)}
+                          </span>
+                          <span className="text-muted-foreground"> / {fmtBRL(pb)}</span>
+                        </p>
+                      </div>
+                      <button onClick={() => { setEditProd(p); setProdOpen(true); }} className="opacity-0 group-hover:opacity-100 transition p-1.5 hover:bg-secondary rounded print:hidden">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <button onClick={() => { setEditProd(p); setProdOpen(true); }} className="opacity-0 group-hover:opacity-100 transition p-1.5 hover:bg-secondary rounded print:hidden">
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
+
+                    {isExceeded && (
+                      <div className="my-2.5 px-3 py-1.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center justify-between gap-2 animate-in fade-in duration-200">
+                        <div className="flex items-center gap-1.5 font-medium">
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-destructive" />
+                          <span>Orçamento excedido</span>
+                        </div>
+                        <span className="font-bold number-tabular">+{fmtBRL(exceededAmount)}</span>
+                      </div>
+                    )}
+
+                    <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all" 
+                        style={{ 
+                          width: `${ppct}%`, 
+                          background: isExceeded ? "var(--destructive)" : category?.color 
+                        }} 
+                      />
+                    </div>
                   </div>
-                  <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${ppct}%`, background: category?.color }} />
-                  </div>
+
                   <div className="mt-3 flex items-center justify-between gap-2">
                     <p className="text-xs text-muted-foreground">{purchases.filter(pu => pu.product_id === p.id).length} compras</p>
                     <button
                       onClick={() => setSelectedProduct(p)}
-                      className="text-xs font-medium text-primary hover:underline print:hidden"
+                      className={cn(
+                        "text-xs font-medium hover:underline print:hidden",
+                        isExceeded ? "text-destructive hover:text-destructive/80 font-semibold" : "text-primary"
+                      )}
                     >
                       Ver compras
                     </button>
@@ -404,7 +443,7 @@ function CategoryView() {
               </Card>
             ) : (
               <Card className="glass-strong border-border/50 overflow-hidden">
-                <div className="divide-y divide-border/50">
+                <div className="max-h-[480px] overflow-y-auto divide-y divide-border/50 scrollbar-custom">
                   {filteredPurchases.map(p => (
                     <div key={p.id} className="p-4 hover:bg-secondary/30 transition group flex items-start gap-4">
                       <div className="w-10 h-10 rounded-xl grid place-items-center shrink-0" style={{ background: `${category?.color}22`, color: category?.color }}>
@@ -487,31 +526,40 @@ function ProductPurchasesDialog({ open, setOpen, product, purchases, onDeletePur
         </DialogHeader>
 
         {/* Total Summary Card */}
-        {purchases.length > 0 && (
-          <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex flex-wrap gap-6 justify-between items-center my-2 shrink-0">
-            <div className="flex gap-8 flex-wrap">
-              <div>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Total Investido</p>
-                <p className="text-2xl font-display font-bold text-primary number-tabular">{fmtBRL(totalAmount)}</p>
+        {purchases.length > 0 && (() => {
+          const prodBudget = parseFloat(product?.budget as any) || 0;
+          const isModalExceeded = prodBudget > 0 && totalAmount > prodBudget;
+          return (
+            <div className={cn(
+              "border rounded-xl p-4 flex flex-wrap gap-6 justify-between items-center my-2 shrink-0 transition-colors",
+              isModalExceeded ? "bg-destructive/5 border-destructive/20" : "bg-primary/5 border-primary/20"
+            )}>
+              <div className="flex gap-8 flex-wrap">
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Total Investido</p>
+                  <p className={cn("text-2xl font-display font-bold number-tabular", isModalExceeded ? "text-destructive" : "text-primary")}>{fmtBRL(totalAmount)}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Orçado</p>
+                  <p className="text-2xl font-display font-bold text-muted-foreground number-tabular">
+                    {fmtBRL(prodBudget)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                    {isModalExceeded ? "Excedido" : "Disponível"}
+                  </p>
+                  <p className={`text-2xl font-display font-bold number-tabular ${!isModalExceeded ? "text-emerald-500" : "text-destructive"}`}>
+                    {isModalExceeded ? `+${fmtBRL(totalAmount - prodBudget)}` : fmtBRL(prodBudget - totalAmount)}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Orçado</p>
-                <p className="text-2xl font-display font-bold text-muted-foreground number-tabular">
-                  {fmtBRL(parseFloat(product?.budget as any) || 0)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Disponível</p>
-                <p className={`text-2xl font-display font-bold number-tabular ${(parseFloat(product?.budget as any) || 0) - totalAmount >= 0 ? "text-emerald-500" : "text-destructive"}`}>
-                  {fmtBRL((parseFloat(product?.budget as any) || 0) - totalAmount)}
-                </p>
+              <div className={cn("w-10 h-10 rounded-xl grid place-items-center shrink-0", isModalExceeded ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary")}>
+                {isModalExceeded ? <AlertTriangle className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
               </div>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-primary/10 grid place-items-center text-primary shrink-0">
-              <ShoppingCart className="w-5 h-5" />
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Scrollable list */}
         <div className="flex-1 overflow-y-auto pr-1 space-y-2 mt-2 scrollbar-thin">
