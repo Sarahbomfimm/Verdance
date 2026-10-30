@@ -187,7 +187,6 @@
 
   h1, h2, h3, h4, h5 {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
   }
 }
 
@@ -389,6 +388,60 @@
   text, .recharts-text, .recharts-label, .recharts-legend-item-text {
     fill: #0f172a !important;
     color: #0f172a !important;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+
+  /* Extrato / Print Table Styles */
+  table.print-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 12px !important;
+    margin-bottom: 12px !important;
+    page-break-inside: auto !important;
+  }
+  table.print-table thead {
+    display: table-header-group !important;
+  }
+  table.print-table tfoot {
+    display: table-footer-group !important;
+  }
+  table.print-table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  table.print-table th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 8px 10px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  table.print-table td {
+    color: #0f172a !important;
+    border: 1px solid #e2e8f0 !important;
+    padding: 8px 10px !important;
+    font-size: 11px !important;
+    vertical-align: top !important;
+  }
+  table.print-table tbody tr:nth-child(even) {
+    background-color: #f8fafc !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  table.print-table tfoot td {
+    background-color: #f1f5f9 !important;
+    border-top: 2px solid #0f172a !important;
+    font-weight: 700 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
 

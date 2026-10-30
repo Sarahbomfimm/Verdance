@@ -3,8 +3,19 @@ import { useEffect, useState } from "react";
 import { getAuth, signOut } from "firebase/auth";
 import { getApp } from "firebase/app";
 import {
-  LayoutDashboard, Calendar, FolderTree, Plus, LogOut, TrendingUp,
-  Settings, Menu, X, Sun, Moon, ChevronLeft, ChevronRight
+  LayoutDashboard,
+  Calendar,
+  FolderTree,
+  Plus,
+  LogOut,
+  TrendingUp,
+  Menu,
+  X,
+  Sun,
+  Moon,
+  ChevronLeft,
+  ChevronRight,
+  ShieldCheck,
 } from "lucide-react";
 import { getFirestore, collection, getDocs } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
@@ -12,6 +23,7 @@ import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useTheme } from "../hooks/useTheme";
+import { useUserAccess } from "@/hooks/useUserAccess";
 import {
   Tooltip,
   TooltipContent,
@@ -21,7 +33,7 @@ import {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const pathname = useRouterState({ select: s => s.location.pathname });
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
@@ -30,11 +42,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return false;
   });
   const { theme, toggle } = useTheme();
+  const {
+    userEmail,
+    isAdmin,
+    isRestricted,
+    canAccessCategory,
+    roleLabel,
+  } = useUserAccess();
 
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   const toggleCollapsed = () => {
-    setCollapsed(prev => {
+    setCollapsed((prev) => {
       const next = !prev;
       localStorage.setItem("sidebar-collapsed", String(next));
       return next;
@@ -46,10 +67,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     queryFn: async () => {
       const db = getFirestore(getApp());
       const snap = await getDocs(collection(db, "years"));
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
       return data.sort((a: any, b: any) => b.year - a.year);
     },
   });
+
+  const { data: allCategories = [] } = useQuery({
+    queryKey: ["all-categories-nav"],
+    queryFn: async () => {
+      const db = getFirestore(getApp());
+      const snap = await getDocs(collection(db, "categories"));
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
+    },
+  });
+
+  const myCategories = isRestricted
+    ? allCategories.filter((c) => canAccessCategory(c))
+    : [];
+
+  const yearMap = Object.fromEntries((years ?? []).map((y: any) => [y.id, y.year]));
 
   const handleLogout = async () => {
     try {
@@ -61,10 +97,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const userEmail = getAuth(getApp()).currentUser?.email;
-
   const nav = [
     { to: "/dashboard", label: "Visão geral", icon: LayoutDashboard },
+    ...(isAdmin
+      ? [{ to: "/admin", label: "Painel admin", icon: ShieldCheck }]
+      : []),
   ];
 
   return (
@@ -83,11 +120,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="p-3 flex flex-col items-center gap-2.5 border-b border-border/30 shrink-0">
               <div className="w-full flex items-center justify-center relative">
                 <Link to="/dashboard" title="Verdance">
-                  <div className="w-9 h-9 rounded-xl grid place-items-center shadow-glow shrink-0 transition-transform hover:scale-105" style={{ background: "var(--gradient-primary)" }}>
+                  <div
+                    className="w-9 h-9 rounded-xl grid place-items-center shadow-glow shrink-0 transition-transform hover:scale-105"
+                    style={{ background: "var(--gradient-primary)" }}
+                  >
                     <TrendingUp className="w-4 h-4 text-primary-foreground" />
                   </div>
                 </Link>
-                <button onClick={() => setMobileOpen(false)} className="lg:hidden absolute right-0 p-2 text-muted-foreground hover:text-foreground">
+                <button
+                  onClick={() => setMobileOpen(false)}
+                  className="lg:hidden absolute right-0 p-2 text-muted-foreground hover:text-foreground"
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -101,8 +144,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           ) : (
             <div className="p-4 lg:p-5 flex items-center justify-between shrink-0">
-              <Link to="/dashboard" className="flex items-center gap-3 group overflow-hidden">
-                <div className="w-9 h-9 rounded-xl grid place-items-center shadow-glow shrink-0 transition-transform group-hover:scale-105" style={{ background: "var(--gradient-primary)" }}>
+              <Link
+                to="/dashboard"
+                className="flex items-center gap-3 group overflow-hidden"
+              >
+                <div
+                  className="w-9 h-9 rounded-xl grid place-items-center shadow-glow shrink-0 transition-transform group-hover:scale-105"
+                  style={{ background: "var(--gradient-primary)" }}
+                >
                   <TrendingUp className="w-4 h-4 text-primary-foreground" />
                 </div>
                 <span className="font-display font-bold text-xl tracking-tight animate-in fade-in duration-200 whitespace-nowrap">
@@ -118,7 +167,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <button onClick={() => setMobileOpen(false)} className="lg:hidden p-2 -mr-2 text-muted-foreground hover:text-foreground">
+                <button
+                  onClick={() => setMobileOpen(false)}
+                  className="lg:hidden p-2 -mr-2 text-muted-foreground hover:text-foreground"
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -133,7 +185,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 const linkContent = (
                   <Link
                     key={item.to}
-                    to={item.to}
+                    to={item.to as any}
                     className={cn(
                       "flex items-center transition-all",
                       collapsed
@@ -146,7 +198,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     )}
                   >
                     <item.icon className="w-4 h-4 shrink-0" />
-                    {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
+                    {!collapsed && (
+                      <span className="whitespace-nowrap">{item.label}</span>
+                    )}
                   </Link>
                 );
 
@@ -154,7 +208,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   return (
                     <Tooltip key={item.to}>
                       <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-                      <TooltipContent side="right" className="hidden lg:block font-medium">
+                      <TooltipContent
+                        side="right"
+                        className="hidden lg:block font-medium"
+                      >
                         {item.label}
                       </TooltipContent>
                     </Tooltip>
@@ -164,21 +221,93 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               })}
             </div>
 
+            {/* Direct Sector Shortcut for Restricted Users */}
+            {isRestricted && myCategories.length > 0 && (
+              <div>
+                {!collapsed ? (
+                  <div className="mb-2 px-3 flex items-center justify-between animate-in fade-in duration-200">
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                      Categorias
+                    </p>
+                  </div>
+                ) : (
+                  <div className="hidden lg:block border-t border-border/40 my-2 mx-2" />
+                )}
+
+                <div className="space-y-1">
+                  {myCategories.map((cat: any) => {
+                    const to = `/category/${cat.id}`;
+                    const active = pathname === to;
+                    const label = yearMap[cat.year_id]
+                      ? `${cat.name} (${yearMap[cat.year_id]})`
+                      : cat.name;
+                    const catContent = (
+                      <Link
+                        key={cat.id}
+                        to="/category/$categoryId"
+                        params={{ categoryId: cat.id }}
+                        className={cn(
+                          "flex items-center transition-all group",
+                          collapsed
+                            ? "w-10 h-10 mx-auto justify-center rounded-xl"
+                            : "gap-3 px-3 py-2 rounded-xl text-sm",
+                          active
+                            ? "bg-secondary text-foreground font-semibold"
+                            : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground"
+                        )}
+                      >
+                        <FolderTree
+                          className="w-4 h-4 shrink-0"
+                          style={{ color: cat.color || undefined }}
+                        />
+                        {!collapsed && (
+                          <span className="truncate">{label}</span>
+                        )}
+                      </Link>
+                    );
+
+                    if (collapsed) {
+                      return (
+                        <Tooltip key={cat.id}>
+                          <TooltipTrigger asChild>{catContent}</TooltipTrigger>
+                          <TooltipContent
+                            side="right"
+                            className="hidden lg:block font-medium"
+                          >
+                            {label}
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    }
+                    return catContent;
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Years Section */}
             <div>
               {!collapsed ? (
                 <div className="mb-2 px-3 flex items-center justify-between animate-in fade-in duration-200">
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Anos</p>
-                  <Link to="/dashboard" className="text-muted-foreground hover:text-primary transition" title="Adicionar ano">
-                    <Plus className="w-3.5 h-3.5" />
-                  </Link>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                    Anos
+                  </p>
+                  {isAdmin && (
+                    <Link
+                      to="/dashboard"
+                      className="text-muted-foreground hover:text-primary transition"
+                      title="Adicionar ano"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </Link>
+                  )}
                 </div>
               ) : (
                 <div className="hidden lg:block border-t border-border/40 my-2 mx-2" />
               )}
 
               <div className="space-y-1">
-                {years?.map(y => {
+                {years?.map((y) => {
                   const to = `/year/${y.id}`;
                   const active = pathname === to;
                   const yearContent = (
@@ -191,11 +320,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         collapsed
                           ? "w-10 h-10 mx-auto justify-center rounded-xl"
                           : "gap-3 px-3 py-2 rounded-xl text-sm",
-                        active ? "bg-secondary text-foreground font-semibold" : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground"
+                        active
+                          ? "bg-secondary text-foreground font-semibold"
+                          : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground"
                       )}
                     >
                       <Calendar className="w-4 h-4 shrink-0" />
-                      {!collapsed && <span className="whitespace-nowrap">{y.year}</span>}
+                      {!collapsed && (
+                        <span className="whitespace-nowrap">{y.year}</span>
+                      )}
                     </Link>
                   );
 
@@ -203,7 +336,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     return (
                       <Tooltip key={y.id}>
                         <TooltipTrigger asChild>{yearContent}</TooltipTrigger>
-                        <TooltipContent side="right" className="hidden lg:block font-medium">
+                        <TooltipContent
+                          side="right"
+                          className="hidden lg:block font-medium"
+                        >
                           Ano {y.year}
                         </TooltipContent>
                       </Tooltip>
@@ -212,7 +348,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   return yearContent;
                 })}
                 {years?.length === 0 && !collapsed && (
-                  <p className="px-3 py-2 text-xs text-muted-foreground">Crie seu primeiro ano</p>
+                  <p className="px-3 py-2 text-xs text-muted-foreground">
+                    Crie seu primeiro ano
+                  </p>
                 )}
               </div>
             </div>
@@ -223,26 +361,45 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {/* User Info */}
             {!collapsed ? (
               <div className="flex items-center gap-3 px-3 py-2 mb-2 animate-in fade-in duration-200">
-                <div className="w-9 h-9 rounded-full grid place-items-center text-sm font-semibold shrink-0" style={{ background: "var(--gradient-primary)", color: "var(--primary-foreground)" }}>
+                <div
+                  className="w-9 h-9 rounded-full grid place-items-center text-sm font-semibold shrink-0"
+                  style={{
+                    background: "var(--gradient-primary)",
+                    color: "var(--primary-foreground)",
+                  }}
+                >
                   {userEmail?.[0]?.toUpperCase() ?? "?"}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{userEmail}</p>
-                  <p className="text-xs text-muted-foreground">Investidor</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {roleLabel}
+                  </p>
                 </div>
               </div>
             ) : (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="hidden lg:flex items-center justify-center p-1 mb-2">
-                    <div className="w-9 h-9 rounded-full grid place-items-center text-xs font-semibold shrink-0 cursor-pointer" style={{ background: "var(--gradient-primary)", color: "var(--primary-foreground)" }}>
+                    <div
+                      className="w-9 h-9 rounded-full grid place-items-center text-xs font-semibold shrink-0 cursor-pointer"
+                      style={{
+                        background: "var(--gradient-primary)",
+                        color: "var(--primary-foreground)",
+                      }}
+                    >
                       {userEmail?.[0]?.toUpperCase() ?? "?"}
                     </div>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="hidden lg:block font-medium">
+                <TooltipContent
+                  side="right"
+                  className="hidden lg:block font-medium"
+                >
                   <p className="font-semibold">{userEmail}</p>
-                  <p className="text-[10px] text-primary-foreground/80">Investidor</p>
+                  <p className="text-[10px] text-primary-foreground/80">
+                    {roleLabel}
+                  </p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -251,16 +408,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {collapsed ? (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button onClick={toggle} variant="ghost" size="icon" className="hidden lg:flex w-10 h-10 mx-auto justify-center text-muted-foreground hover:text-foreground mb-1 rounded-xl">
-                    {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                  <Button
+                    onClick={toggle}
+                    variant="ghost"
+                    size="icon"
+                    className="hidden lg:flex w-10 h-10 mx-auto justify-center text-muted-foreground hover:text-foreground mb-1 rounded-xl"
+                  >
+                    {theme === "dark" ? (
+                      <Sun className="w-4 h-4" />
+                    ) : (
+                      <Moon className="w-4 h-4" />
+                    )}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="hidden lg:block font-medium">
+                <TooltipContent
+                  side="right"
+                  className="hidden lg:block font-medium"
+                >
                   {theme === "dark" ? "Modo claro" : "Modo escuro"}
                 </TooltipContent>
               </Tooltip>
             ) : (
-              <Button onClick={toggle} variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground mb-1">
+              <Button
+                onClick={toggle}
+                variant="ghost"
+                className="w-full justify-start text-muted-foreground hover:text-foreground mb-1"
+              >
                 {theme === "dark" ? (
                   <>
                     <Sun className="w-4 h-4 mr-2 shrink-0" /> Modo claro
@@ -277,23 +450,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {collapsed ? (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button onClick={handleLogout} variant="ghost" size="icon" className="hidden lg:flex w-10 h-10 mx-auto justify-center text-muted-foreground hover:text-destructive rounded-xl">
+                  <Button
+                    onClick={handleLogout}
+                    variant="ghost"
+                    size="icon"
+                    className="hidden lg:flex w-10 h-10 mx-auto justify-center text-muted-foreground hover:text-destructive rounded-xl"
+                  >
                     <LogOut className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="hidden lg:block font-medium">
+                <TooltipContent
+                  side="right"
+                  className="hidden lg:block font-medium"
+                >
                   Sair
                 </TooltipContent>
               </Tooltip>
             ) : (
-              <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive">
+              <Button
+                onClick={handleLogout}
+                variant="ghost"
+                className="w-full justify-start text-muted-foreground hover:text-destructive"
+              >
                 <LogOut className="w-4 h-4 mr-2 shrink-0" /> Sair
               </Button>
             )}
           </div>
         </aside>
 
-        {mobileOpen && <div className="fixed inset-0 bg-background/80 z-40 lg:hidden" onClick={() => setMobileOpen(false)} />}
+        {mobileOpen && (
+          <div
+            className="fixed inset-0 bg-background/80 z-40 lg:hidden"
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
 
         {/* Main */}
         <main className="flex-1 min-w-0 flex flex-col min-h-screen justify-between">
@@ -302,20 +492,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Menu className="w-5 h-5" />
             </button>
             <Link to="/dashboard" className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg grid place-items-center" style={{ background: "var(--gradient-primary)" }}>
+              <div
+                className="w-7 h-7 rounded-lg grid place-items-center"
+                style={{ background: "var(--gradient-primary)" }}
+              >
                 <TrendingUp className="w-3.5 h-3.5 text-primary-foreground" />
               </div>
               <span className="font-display font-bold">Verdance</span>
             </Link>
-            <button onClick={toggle} className="p-2 text-muted-foreground hover:text-foreground shrink-0">
-              {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            <button
+              onClick={toggle}
+              className="p-2 text-muted-foreground hover:text-foreground shrink-0"
+            >
+              {theme === "dark" ? (
+                <Sun className="w-5 h-5" />
+              ) : (
+                <Moon className="w-5 h-5" />
+              )}
             </button>
           </header>
           <div className="flex-1">{children}</div>
 
           {/* Centered Page Footer */}
           <footer className="py-6 px-6 border-t border-border/30 flex items-center justify-center print:hidden">
-            <a href="https://yourpage.com.br" target="_blank" rel="noopener noreferrer" className="yp-footer-link">
+            <a
+              href="https://yourpage.com.br"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="yp-footer-link"
+            >
               <span className="yp-footer-text">Desenvolvido por</span>
               <span translate="no" className="notranslate yp-footer-badge">
                 YourPage
@@ -327,4 +532,3 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </TooltipProvider>
   );
 }
-

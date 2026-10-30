@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, ArrowLeft, Pencil, Trash2, Package, ShoppingCart, MessageSquareText, Filter, Printer, Search, X, AlertTriangle } from "lucide-react";
+import { Plus, ArrowLeft, Pencil, Trash2, Package, ShoppingCart, MessageSquareText, Filter, Printer, Search, X, AlertTriangle, Lock } from "lucide-react";
 import { fmtBRL, fmtDate } from "@/lib/format";
 import { toast } from "sonner";
 import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, deleteDoc, addDoc, query, where } from "firebase/firestore";
@@ -18,6 +18,7 @@ import { getAuth } from "firebase/auth";
 import { getApp } from "firebase/app";
 import type { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
+import { useUserAccess } from "@/hooks/useUserAccess";
 
 export const Route = createFileRoute("/_authenticated/category/$categoryId")({
   head: () => ({ meta: [{ title: "Categoria — Verdance" }] }),
@@ -34,6 +35,7 @@ const getLocalISODate = (date = new Date()) => {
 function CategoryView() {
   const { categoryId } = Route.useParams();
   const qc = useQueryClient();
+  const { userEmail, isRestricted, isLoadingAccess, canAccessCategory } = useUserAccess();
   const [prodOpen, setProdOpen] = useState(false);
   const [editProd, setEditProd] = useState<any>(null);
   const [purchOpen, setPurchOpen] = useState(false);
@@ -44,8 +46,31 @@ function CategoryView() {
   const [purchaseSearch, setPurchaseSearch] = useState("");
   const [showProductSearch, setShowProductSearch] = useState(false);
   const [showPurchaseSearch, setShowPurchaseSearch] = useState(false);
+  const [printMode, setPrintMode] = useState<"all" | "purchases">("all");
 
-  const { data: category } = useQuery({
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      setPrintMode("all");
+    };
+    window.addEventListener("afterprint", handleAfterPrint);
+    return () => window.removeEventListener("afterprint", handleAfterPrint);
+  }, []);
+
+  const handlePrintAll = () => {
+    setPrintMode("all");
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  };
+
+  const handlePrintPurchasesOnly = () => {
+    setPrintMode("purchases");
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  };
+
+  const { data: category, isLoading: isLoadingCategory } = useQuery({
     queryKey: ["category", categoryId],
     queryFn: async () => {
       const db = getFirestore(getApp());
@@ -60,8 +85,11 @@ function CategoryView() {
     },
   });
 
+  const hasAccess = !category || canAccessCategory(category);
+
   const { data: products = [] } = useQuery({
     queryKey: ["products", categoryId],
+    enabled: Boolean(category) && hasAccess,
     queryFn: async () => {
       const db = getFirestore(getApp());
       const q = query(collection(db, "products"), where("category_id", "==", categoryId));
@@ -72,6 +100,7 @@ function CategoryView() {
 
   const { data: purchases = [] } = useQuery({
     queryKey: ["purchases-cat", categoryId],
+    enabled: Boolean(category) && hasAccess,
     queryFn: async () => {
       const db = getFirestore(getApp());
       const q = query(collection(db, "purchases"), where("category_id", "==", categoryId));
@@ -87,6 +116,43 @@ function CategoryView() {
       return purchases.sort((a: any, b: any) => (b.purchase_date || "").localeCompare(a.purchase_date || ""));
     },
   });
+
+  if (isLoadingAccess || isLoadingCategory) {
+    return (
+      <div className="px-6 py-16 max-w-7xl mx-auto text-center text-muted-foreground">
+        Carregando módulo...
+      </div>
+    );
+  }
+
+  if (isRestricted && category && !canAccessCategory(category)) {
+    return (
+      <div className="px-6 pb-6 pt-10 lg:px-10 lg:pb-10 lg:pt-16 max-w-3xl mx-auto">
+        <Card className="glass-strong border-border/50 p-10 text-center space-y-4">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-destructive/10 text-destructive grid place-items-center">
+            <Lock className="w-7 h-7" />
+          </div>
+          <h1 className="text-2xl font-display font-bold">
+            Acesso restrito ao seu setor
+          </h1>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            Sua conta ({userEmail}) possui permissão apenas para visualizar o
+            total geral na visão geral e os detalhes da sua categoria vinculada.
+          </p>
+          <div className="pt-2">
+            <Link to="/dashboard">
+              <Button
+                style={{ background: "var(--gradient-primary)" }}
+                className="font-semibold"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" /> Voltar para a visão geral
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   const totalSpent = purchases.reduce((s, p) => s + parseFloat(p.amount as any), 0);
   const catBudget = category ? parseFloat(category.budget as any) : 0;
@@ -138,13 +204,16 @@ function CategoryView() {
         <Link to="/year/$yearId" params={{ yearId: category?.year_id ?? "" }} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="w-4 h-4" /> Voltar para {category?.years?.year ?? "ano"}
         </Link>
-        <Button variant="outline" onClick={() => window.print()} className="border-border/60">
+        <Button variant="outline" onClick={handlePrintAll} className="border-border/60">
           <Printer className="w-4 h-4 mr-2" /> Imprimir
         </Button>
       </div>
 
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-3xl glass-strong border border-border/50 p-8 lg:p-10">
+      <div className={cn(
+        "relative overflow-hidden rounded-3xl glass-strong border border-border/50 p-8 lg:p-10",
+        printMode === "purchases" && "print:hidden"
+      )}>
         <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full opacity-20 blur-3xl" style={{ background: category?.color ?? "#10b981" }} />
         <div className="relative">
           <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Categoria · {category?.years?.year}</p>
@@ -179,7 +248,7 @@ function CategoryView() {
       </div>
 
       {/* Products */}
-      <div className="space-y-4">
+      <div className={cn("space-y-4", printMode === "purchases" && "print:hidden")}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4 flex-1">
             <h2 className="font-display font-bold text-2xl">Produtos</h2>
@@ -317,8 +386,8 @@ function CategoryView() {
       </div>
 
       {/* Purchases */}
-      <div className="space-y-4 print:hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
           <div className="flex items-center gap-4 flex-1">
             <h2 className="font-display font-bold text-2xl">Compras</h2>
           </div>
@@ -392,14 +461,27 @@ function CategoryView() {
               </PopoverContent>
             </Popover>
 
+            {/* Print Purchases Extrato Button */}
+            <Button
+              variant="outline"
+              onClick={handlePrintPurchasesOnly}
+              disabled={filteredPurchases.length === 0}
+              className="border-border/60 hover:bg-secondary/60 h-9 shrink-0 gap-1.5 text-xs font-medium"
+              title="Imprimir extrato de compras da categoria"
+            >
+              <Printer className="w-4 h-4 text-muted-foreground" />
+              <span className="hidden sm:inline">Imprimir extrato</span>
+            </Button>
+
             <Button onClick={() => { setEditPurch(null); setPurchOpen(true); }} style={{ background: "var(--gradient-primary)" }} className="font-semibold shadow-glow">
               <Plus className="w-4 h-4 mr-2" /> Nova compra
             </Button>
           </div>
         </div>
 
+        {/* Screen view: empty state or card list */}
         {purchases.length === 0 ? (
-          <Card className="glass border-dashed border-2 border-border/50 p-10 text-center">
+          <Card className="glass border-dashed border-2 border-border/50 p-10 text-center print:hidden">
             <ShoppingCart className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground mb-4">Nenhuma compra registrada nesta categoria.</p>
             <Button onClick={() => { setEditPurch(null); setPurchOpen(true); }} style={{ background: "var(--gradient-primary)" }} className="font-semibold">
@@ -407,7 +489,7 @@ function CategoryView() {
             </Button>
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 print:hidden">
             {/* Filter Summary Badge */}
             {(dateRange?.from || purchaseSearch) && (
               <div className="flex items-center justify-between px-4 py-2 bg-secondary/15 rounded-xl border border-border/50 text-xs text-muted-foreground font-medium animate-in fade-in duration-200">
@@ -473,6 +555,137 @@ function CategoryView() {
             )}
           </div>
         )}
+
+        {/* Printable Extrato de Compras Section (Visible only when printing) */}
+        <div className="hidden print:block w-full">
+          {/* Header when printing only purchases statement */}
+          {printMode === "purchases" && (
+            <div className="mb-6 border-b-2 border-slate-900 pb-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Verdance</span>
+                    <span className="text-slate-300">|</span>
+                    <span className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Gestão Financeira</span>
+                  </div>
+                  <h1 className="text-2xl font-bold uppercase tracking-tight text-slate-900">
+                    Extrato de Compras da Categoria
+                  </h1>
+                  <p className="text-base font-semibold text-slate-800 mt-1">
+                    Categoria: <span className="font-bold underline decoration-slate-400">{category?.name}</span>
+                    {category?.years?.year ? ` · Exercício / Ano: ${category.years.year}` : ""}
+                  </p>
+                  
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 mt-2">
+                    <span>
+                      <strong>Período:</strong>{" "}
+                      {dateRange?.from
+                        ? `${fmtShortDate(dateRange.from)} ${dateRange.to ? `até ${fmtShortDate(dateRange.to)}` : ""}`
+                        : "Histórico completo"}
+                    </span>
+                    {purchaseSearch && (
+                      <span>
+                        <strong>Filtro de busca:</strong> "{purchaseSearch}"
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="text-right border-l-2 border-slate-200 pl-6 shrink-0">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total no Extrato</p>
+                  <p className="text-2xl font-black text-slate-900 number-tabular">
+                    {fmtBRL(filteredPurchases.reduce((s, p) => s + parseFloat(p.amount as any), 0))}
+                  </p>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {filteredPurchases.length} {filteredPurchases.length === 1 ? "registro encontrado" : "registros encontrados"}
+                  </p>
+                  {catBudget > 0 && (
+                    <div className="text-[11px] text-slate-500 mt-2 pt-1 border-t border-slate-200">
+                      <span>Orçado: <strong>{fmtBRL(catBudget)}</strong></span>
+                      <span className="mx-1.5">·</span>
+                      <span>Disponível: <strong className={catBudget - totalSpent >= 0 ? "text-emerald-700" : "text-red-700"}>{fmtBRL(catBudget - totalSpent)}</strong></span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Header when printing full category report */}
+          {printMode === "all" && (
+            <div className="mb-4 pt-6 border-t-2 border-slate-800 break-before-avoid">
+              <div className="flex justify-between items-end">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Extrato Detalhado de Compras</h2>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {filteredPurchases.length} {filteredPurchases.length === 1 ? "compra registrada" : "compras registradas"}
+                    {dateRange?.from ? ` · Período: ${fmtShortDate(dateRange.from)} ${dateRange.to ? `até ${fmtShortDate(dateRange.to)}` : ""}` : ""}
+                    {purchaseSearch ? ` · Busca: "${purchaseSearch}"` : ""}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-semibold text-slate-500 uppercase mr-2">Total de Compras:</span>
+                  <span className="text-base font-bold text-slate-900 number-tabular">
+                    {fmtBRL(filteredPurchases.reduce((s, p) => s + parseFloat(p.amount as any), 0))}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* The Extrato Table */}
+          <table className="print-table w-full text-left text-xs border-collapse">
+            <thead>
+              <tr>
+                <th className="w-[120px] text-left">Data</th>
+                <th className="w-[180px] text-left">Produto</th>
+                <th className="text-left">Observação</th>
+                <th className="w-[130px] text-right">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPurchases.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-slate-500 italic">
+                    Nenhuma compra encontrada para os filtros selecionados.
+                  </td>
+                </tr>
+              ) : (
+                filteredPurchases.map((p, idx) => (
+                  <tr key={p.id || idx}>
+                    <td className="whitespace-nowrap font-medium text-slate-800">
+                      {fmtDate(p.purchase_date)}
+                    </td>
+                    <td className="font-semibold text-slate-900">
+                      {p.products?.name || "Sem produto"}
+                    </td>
+                    <td className="text-slate-700 break-words whitespace-pre-wrap leading-relaxed text-[11px]">
+                      {p.notes || <span className="text-slate-400 italic">Sem observação</span>}
+                    </td>
+                    <td className="text-right font-bold whitespace-nowrap number-tabular text-slate-900">
+                      {fmtBRL(p.amount)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            {filteredPurchases.length > 0 && (
+              <tfoot>
+                <tr>
+                  <td colSpan={2} className="text-slate-900">
+                    Total: {filteredPurchases.length} {filteredPurchases.length === 1 ? "compra" : "compras"}
+                  </td>
+                  <td className="text-right uppercase text-[10px] tracking-wider text-slate-700">
+                    Total Geral:
+                  </td>
+                  <td className="text-right text-sm font-bold number-tabular text-slate-900">
+                    {fmtBRL(filteredPurchases.reduce((s, p) => s + parseFloat(p.amount as any), 0))}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
       </div>
 
       <ProductDialog open={prodOpen} setOpen={setProdOpen} categoryId={categoryId} editing={editProd} />
@@ -482,6 +695,12 @@ function CategoryView() {
         setOpen={(open: boolean) => !open && setSelectedProduct(null)}
         product={selectedProduct}
         purchases={purchases.filter(p => p.product_id === selectedProduct?.id)}
+        onPrintProduct={(prod: any) => {
+          setSelectedProduct(null);
+          setPurchaseSearch(prod.name);
+          setShowPurchaseSearch(true);
+          handlePrintPurchasesOnly();
+        }}
         onDeletePurchase={async (p: any) => {
           try {
             const db = getFirestore(getApp());
@@ -498,14 +717,15 @@ function CategoryView() {
         }}
       />
 
-      <div className="hidden print:block text-right text-xs text-muted-foreground border-t border-border/20 pt-4 mt-8">
-        Relatório gerado em {new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+      <div className="hidden print:flex justify-between items-center text-xs text-slate-500 border-t border-slate-300 pt-4 mt-8">
+        <span>Verdance · Relatório Oficial</span>
+        <span>Impresso em {new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</span>
       </div>
     </div>
   );
 }
 
-function ProductPurchasesDialog({ open, setOpen, product, purchases, onDeletePurchase }: any) {
+function ProductPurchasesDialog({ open, setOpen, product, purchases, onDeletePurchase, onPrintProduct }: any) {
   const totalAmount = purchases.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0);
   const [purchaseToDelete, setPurchaseToDelete] = useState<any>(null);
 
@@ -519,10 +739,24 @@ function ProductPurchasesDialog({ open, setOpen, product, purchases, onDeletePur
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="glass-strong border-border/50 max-w-2xl flex flex-col max-h-[85vh]">
         <DialogHeader className="pb-2 border-b border-border/30">
-          <DialogTitle className="flex justify-between items-baseline pr-6">
-            <span>Compras: <span className="text-primary">{product?.name}</span></span>
-            <span className="text-xs font-normal text-muted-foreground">{purchases.length} {purchases.length === 1 ? "compra" : "compras"}</span>
-          </DialogTitle>
+          <div className="flex items-center justify-between pr-6">
+            <DialogTitle className="flex items-baseline gap-2">
+              <span>Compras: <span className="text-primary">{product?.name}</span></span>
+              <span className="text-xs font-normal text-muted-foreground">({purchases.length} {purchases.length === 1 ? "compra" : "compras"})</span>
+            </DialogTitle>
+            {purchases.length > 0 && onPrintProduct && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPrintProduct(product)}
+                className="h-8 gap-1.5 text-xs border-border/60 hover:bg-secondary/60 shrink-0"
+                title="Imprimir extrato deste produto"
+              >
+                <Printer className="w-3.5 h-3.5 text-muted-foreground" />
+                <span>Imprimir extrato</span>
+              </Button>
+            )}
+          </div>
         </DialogHeader>
 
         {/* Total Summary Card */}

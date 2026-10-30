@@ -5,14 +5,47 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Plus, ArrowLeft, Pencil, Trash2, Target, TrendingUp, ChevronRight, Sparkles, Printer } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Plus,
+  ArrowLeft,
+  Pencil,
+  Trash2,
+  Target,
+  ChevronRight,
+  Sparkles,
+  Printer,
+} from "lucide-react";
 import { fmtBRL, fmtCompact } from "@/lib/format";
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+} from "recharts";
 import { toast } from "sonner";
-import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, deleteDoc, addDoc, query, where } from "firebase/firestore";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  doc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
+  addDoc,
+  query,
+  where,
+} from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getApp } from "firebase/app";
+import { useUserAccess } from "@/hooks/useUserAccess";
 
 export const Route = createFileRoute("/_authenticated/year/$yearId")({
   head: () => ({ meta: [{ title: "Ano — Verdance" }] }),
@@ -36,6 +69,7 @@ function YearView() {
   const [catOpen, setCatOpen] = useState(false);
   const [editYearOpen, setEditYearOpen] = useState(false);
   const [editCat, setEditCat] = useState<any>(null);
+  const { isAdmin, isRestricted, canAccessCategory } = useUserAccess();
 
   const { data: year } = useQuery({
     queryKey: ["year", yearId],
@@ -51,9 +85,12 @@ function YearView() {
     queryKey: ["categories", yearId],
     queryFn: async () => {
       const db = getFirestore(getApp());
-      const q = query(collection(db, "categories"), where("year_id", "==", yearId));
+      const q = query(
+        collection(db, "categories"),
+        where("year_id", "==", yearId)
+      );
       const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
     },
   });
 
@@ -61,22 +98,40 @@ function YearView() {
     queryKey: ["purchases-year", yearId],
     queryFn: async () => {
       const db = getFirestore(getApp());
-      const q = query(collection(db, "purchases"), where("year_id", "==", yearId));
+      const q = query(
+        collection(db, "purchases"),
+        where("year_id", "==", yearId)
+      );
       const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
     },
   });
 
   const totalBudget = year ? parseFloat(year.total_budget as any) : 0;
-  const totalSpent = purchases.reduce((s, p) => s + parseFloat(p.amount as any), 0);
-  const totalCatBudget = categories.reduce((s, c) => s + parseFloat(c.budget as any), 0);
+  const totalSpent = purchases.reduce(
+    (s, p) => s + parseFloat(p.amount as any),
+    0
+  );
+  const totalCatBudget = categories.reduce(
+    (s, c) => s + parseFloat(c.budget as any),
+    0
+  );
 
-  const byCat = categories.map(c => {
-    const spent = purchases.filter(p => p.category_id === c.id).reduce((s, p) => s + parseFloat(p.amount as any), 0);
+  // Filter categories so restricted users ONLY see their own linked category(ies)
+  const visibleCategories = isRestricted
+    ? categories.filter((c) => canAccessCategory(c))
+    : categories;
+
+  const byCat = visibleCategories.map((c) => {
+    const spent = purchases
+      .filter((p) => p.category_id === c.id)
+      .reduce((s, p) => s + parseFloat(p.amount as any), 0);
     return { ...c, spent, budgetN: parseFloat(c.budget as any) };
   });
 
-  const pieData = byCat.filter(c => c.spent > 0).map(c => ({ name: c.name, value: c.spent, color: c.color }));
+  const pieData = byCat
+    .filter((c) => c.spent > 0)
+    .map((c) => ({ name: c.name, value: c.spent, color: c.color }));
 
   const deleteYear = useMutation({
     mutationFn: async () => {
@@ -93,43 +148,77 @@ function YearView() {
 
   return (
     <div className="px-6 pb-6 pt-10 lg:px-10 lg:pb-10 lg:pt-16 max-w-7xl mx-auto space-y-8">
-      <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground print:hidden">
+      <Link
+        to="/dashboard"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground print:hidden"
+      >
         <ArrowLeft className="w-4 h-4" /> Visão geral
       </Link>
 
       {/* Hero */}
       <div className="relative overflow-hidden rounded-3xl glass-strong border border-border/50 p-8 lg:p-10">
-        <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full opacity-20 blur-3xl" style={{ background: "var(--gradient-primary)" }} />
+        <div
+          className="absolute -top-20 -right-20 w-80 h-80 rounded-full opacity-20 blur-3xl"
+          style={{ background: "var(--gradient-primary)" }}
+        />
         <div className="relative flex flex-wrap items-end justify-between gap-6">
           <div>
             <p className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
-              <Sparkles className="w-3.5 h-3.5 text-primary" /> Ano de investimento
+              <Sparkles className="w-3.5 h-3.5 text-primary" /> Ano de
+              investimento
             </p>
             <h1 className="text-5xl lg:text-6xl font-display font-bold tracking-tight">
               <span className="text-gradient-primary">{year?.year ?? "—"}</span>
             </h1>
             <div className="mt-4 flex flex-wrap items-baseline gap-x-6 gap-y-2">
               <div>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">Investido</p>
-                <p className="text-2xl font-display font-bold number-tabular">{fmtBRL(totalSpent)}</p>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Investido
+                </p>
+                <p className="text-2xl font-display font-bold number-tabular">
+                  {fmtBRL(totalSpent)}
+                </p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">Orçado total</p>
-                <p className="text-2xl font-display font-bold number-tabular text-muted-foreground">{fmtBRL(totalBudget)}</p>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Orçado total
+                </p>
+                <p className="text-2xl font-display font-bold number-tabular text-muted-foreground">
+                  {fmtBRL(totalBudget)}
+                </p>
               </div>
             </div>
           </div>
 
           <div className="flex gap-2 print:hidden">
-            <Button variant="outline" onClick={() => window.print()} className="border-border/60">
+            <Button
+              variant="outline"
+              onClick={() => window.print()}
+              className="border-border/60"
+            >
               <Printer className="w-4 h-4 mr-2" /> Imprimir
             </Button>
-            <Button variant="outline" onClick={() => setEditYearOpen(true)} className="border-border/60">
-              <Pencil className="w-4 h-4 mr-2" /> Editar
-            </Button>
-            <Button variant="outline" onClick={() => { if (confirm("Excluir este ano e tudo dentro dele?")) deleteYear.mutate(); }} className="border-border/60 text-destructive hover:text-destructive">
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            {isAdmin && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setEditYearOpen(true)}
+                  className="border-border/60"
+                >
+                  <Pencil className="w-4 h-4 mr-2" /> Editar
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (confirm("Excluir este ano e tudo dentro dele?"))
+                      deleteYear.mutate();
+                  }}
+                  className="border-border/60 text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -137,11 +226,26 @@ function YearView() {
         <div className="relative mt-8 space-y-2">
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>0%</span>
-            <span className="font-semibold text-foreground">{totalBudget > 0 ? ((totalSpent / totalBudget) * 100).toFixed(1) : "0"}% utilizado</span>
+            <span className="font-semibold text-foreground">
+              {totalBudget > 0
+                ? ((totalSpent / totalBudget) * 100).toFixed(1)
+                : "0"}
+              % utilizado
+            </span>
             <span>100%</span>
           </div>
           <div className="h-3 rounded-full bg-secondary overflow-hidden">
-            <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${totalBudget > 0 ? Math.min(100, (totalSpent / totalBudget) * 100) : 0}%`, background: "var(--gradient-primary)" }} />
+            <div
+              className="h-full rounded-full transition-all duration-1000"
+              style={{
+                width: `${
+                  totalBudget > 0
+                    ? Math.min(100, (totalSpent / totalBudget) * 100)
+                    : 0
+                }%`,
+                background: "var(--gradient-primary)",
+              }}
+            />
           </div>
         </div>
       </div>
@@ -151,43 +255,97 @@ function YearView() {
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display font-bold text-2xl">Categorias</h2>
-            <Button onClick={() => { setEditCat(null); setCatOpen(true); }} style={{ background: "var(--gradient-primary)" }} className="font-semibold shadow-glow print:hidden">
-              <Plus className="w-4 h-4 mr-2" /> Nova categoria
-            </Button>
+            {isAdmin && (
+              <Button
+                onClick={() => {
+                  setEditCat(null);
+                  setCatOpen(true);
+                }}
+                style={{ background: "var(--gradient-primary)" }}
+                className="font-semibold shadow-glow print:hidden"
+              >
+                <Plus className="w-4 h-4 mr-2" /> Nova categoria
+              </Button>
+            )}
           </div>
 
-          {categories.length === 0 ? (
+          {visibleCategories.length === 0 ? (
             <Card className="glass border-dashed border-2 border-border/50 p-10 text-center">
               <Target className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-              <p className="text-muted-foreground mb-4">Crie categorias para organizar seus investimentos.</p>
-              <Button onClick={() => { setEditCat(null); setCatOpen(true); }} variant="outline" className="border-border/60">
-                <Plus className="w-4 h-4 mr-2" /> Adicionar categoria
-              </Button>
+              <p className="text-muted-foreground mb-4">
+                {isRestricted
+                  ? "Nenhuma categoria vinculada ao seu setor neste ano."
+                  : "Crie categorias para organizar seus investimentos."}
+              </p>
+              {isAdmin && (
+                <Button
+                  onClick={() => {
+                    setEditCat(null);
+                    setCatOpen(true);
+                  }}
+                  variant="outline"
+                  className="border-border/60"
+                >
+                  <Plus className="w-4 h-4 mr-2" /> Adicionar categoria
+                </Button>
+              )}
             </Card>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
-              {byCat.map(c => {
-                const pct = c.budgetN > 0 ? Math.min(100, (c.spent / c.budgetN) * 100) : (c.spent > 0 ? 100 : 0);
+              {byCat.map((c) => {
+                const pct =
+                  c.budgetN > 0
+                    ? Math.min(100, (c.spent / c.budgetN) * 100)
+                    : c.spent > 0
+                    ? 100
+                    : 0;
                 return (
-                  <Card key={c.id} className="glass-strong border-border/50 p-5 hover:border-primary/40 hover:shadow-glow transition-all group">
+                  <Card
+                    key={c.id}
+                    className="glass-strong border-border/50 p-5 hover:border-primary/40 hover:shadow-glow transition-all group"
+                  >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl grid place-items-center" style={{ background: `${c.color}22`, color: c.color }}>
+                        <div
+                          className="w-10 h-10 rounded-xl grid place-items-center"
+                          style={{
+                            background: `${c.color}22`,
+                            color: c.color,
+                          }}
+                        >
                           <Target className="w-5 h-5" />
                         </div>
                         <div>
                           <p className="font-display font-bold">{c.name}</p>
-                          <p className="text-xs text-muted-foreground number-tabular">{fmtCompact(c.spent)} / {fmtCompact(c.budgetN)}</p>
+                          <p className="text-xs text-muted-foreground number-tabular">
+                            {fmtCompact(c.spent)} / {fmtCompact(c.budgetN)}
+                          </p>
                         </div>
                       </div>
-                      <button onClick={(e) => { e.preventDefault(); setEditCat(c); setCatOpen(true); }} className="opacity-0 group-hover:opacity-100 transition p-1.5 hover:bg-secondary rounded print:hidden">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setEditCat(c);
+                            setCatOpen(true);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition p-1.5 hover:bg-secondary rounded print:hidden"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                     <div className="h-1.5 rounded-full bg-secondary overflow-hidden mb-3">
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: c.color }} />
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${pct}%`, background: c.color }}
+                      />
                     </div>
-                    <Link to="/category/$categoryId" params={{ categoryId: c.id }} className="text-xs text-primary hover:underline flex items-center gap-1 print:hidden">
+                    <Link
+                      to="/category/$categoryId"
+                      params={{ categoryId: c.id }}
+                      className="text-xs text-primary hover:underline flex items-center gap-1 print:hidden"
+                    >
                       Ver produtos e compras <ChevronRight className="w-3 h-3" />
                     </Link>
                   </Card>
@@ -196,17 +354,25 @@ function YearView() {
             </div>
           )}
 
-          {totalCatBudget > totalBudget && totalBudget > 0 && (
+          {isAdmin && totalCatBudget > totalBudget && totalBudget > 0 && (
             <Card className="border-warning/40 bg-warning/5 p-4">
-              <p className="text-sm">⚠️ A soma dos orçamentos por categoria ({fmtBRL(totalCatBudget)}) excede o orçamento total do ano ({fmtBRL(totalBudget)}).</p>
+              <p className="text-sm">
+                ⚠️ A soma dos orçamentos por categoria (
+                {fmtBRL(totalCatBudget)}) excede o orçamento total do ano (
+                {fmtBRL(totalBudget)}).
+              </p>
             </Card>
           )}
         </div>
 
         <Card className="glass-strong border-border/50 p-6 h-[480px] flex flex-col">
           <div>
-            <h3 className="font-display font-bold text-lg mb-1">Distribuição</h3>
-            <p className="text-sm text-muted-foreground mb-4">Por categoria</p>
+            <h3 className="font-display font-bold text-lg mb-1">
+              Distribuição
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Por categoria
+            </p>
           </div>
           {pieData.length > 0 ? (
             <>
@@ -227,7 +393,10 @@ function YearView() {
                         <Cell key={i} fill={d.color} stroke="none" />
                       ))}
                     </Pie>
-                    <Tooltip content={<DistributionTooltip />} formatter={(v: number) => fmtBRL(v)} />
+                    <Tooltip
+                      content={<DistributionTooltip />}
+                      formatter={(v: number) => fmtBRL(v)}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -235,18 +404,29 @@ function YearView() {
                 {(() => {
                   const pieTotal = pieData.reduce((sum, d) => sum + d.value, 0);
                   return pieData.map((d, i) => {
-                    const percentage = pieTotal > 0 ? (d.value / pieTotal) * 100 : 0;
+                    const percentage =
+                      pieTotal > 0 ? (d.value / pieTotal) * 100 : 0;
                     return (
-                      <div key={i} className="flex items-center justify-between text-xs py-1.5 border-b border-border/10 last:border-0">
+                      <div
+                        key={i}
+                        className="flex items-center justify-between text-xs py-1.5 border-b border-border/10 last:border-0"
+                      >
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: d.color }}
+                          />
                           <span className="truncate font-medium text-muted-foreground hover:text-foreground transition-colors">
                             {d.name}
                           </span>
                         </div>
                         <div className="flex items-center gap-3 shrink-0 ml-2">
-                          <span className="font-semibold text-foreground">{percentage.toFixed(1)}%</span>
-                          <span className="text-muted-foreground/60 number-tabular">{fmtBRL(d.value)}</span>
+                          <span className="font-semibold text-foreground">
+                            {percentage.toFixed(1)}%
+                          </span>
+                          <span className="text-muted-foreground/60 number-tabular">
+                            {fmtBRL(d.value)}
+                          </span>
                         </div>
                       </div>
                     );
@@ -262,11 +442,28 @@ function YearView() {
         </Card>
       </div>
 
-      <CategoryDialog open={catOpen} setOpen={setCatOpen} yearId={yearId} editing={editCat} />
-      <EditYearDialog open={editYearOpen} setOpen={setEditYearOpen} year={year} />
+      {isAdmin && (
+        <>
+          <CategoryDialog
+            open={catOpen}
+            setOpen={setCatOpen}
+            yearId={yearId}
+            editing={editCat}
+          />
+          <EditYearDialog
+            open={editYearOpen}
+            setOpen={setEditYearOpen}
+            year={year}
+          />
+        </>
+      )}
 
       <div className="hidden print:block text-right text-xs text-muted-foreground border-t border-border/20 pt-4 mt-8">
-        Relatório gerado em {new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+        Relatório gerado em{" "}
+        {new Date().toLocaleString("pt-BR", {
+          dateStyle: "short",
+          timeStyle: "short",
+        })}
       </div>
     </div>
   );
@@ -304,16 +501,30 @@ function CategoryDialog({ open, setOpen, yearId, editing }: any) {
       const user = auth.currentUser;
       if (!user) throw new Error("not auth");
       const db = getFirestore(getApp());
-      
+
       if (editing) {
-        await updateDoc(doc(db, "categories", editing.id), { name, budget: parseFloat(budget) || 0, color });
+        await updateDoc(doc(db, "categories", editing.id), {
+          name,
+          budget: parseFloat(budget) || 0,
+          color,
+        });
       } else {
-        await addDoc(collection(db, "categories"), { user_id: user.uid, year_id: yearId, name, budget: parseFloat(budget) || 0, color, created_at: new Date().toISOString() });
+        await addDoc(collection(db, "categories"), {
+          user_id: user.uid,
+          year_id: yearId,
+          name,
+          budget: parseFloat(budget) || 0,
+          color,
+          created_at: new Date().toISOString(),
+        });
       }
     },
     onSuccess: () => {
       toast.success(editing ? "Categoria atualizada" : "Categoria criada");
       qc.invalidateQueries({ queryKey: ["categories", yearId] });
+      qc.invalidateQueries({ queryKey: ["all-categories-admin"] });
+      qc.invalidateQueries({ queryKey: ["all-categories-nav"] });
+      qc.invalidateQueries({ queryKey: ["all-categories-dashboard"] });
       setOpen(false);
       setName("");
       setBudget("");
@@ -330,6 +541,9 @@ function CategoryDialog({ open, setOpen, yearId, editing }: any) {
     onSuccess: () => {
       toast.success("Categoria excluída");
       qc.invalidateQueries({ queryKey: ["categories", yearId] });
+      qc.invalidateQueries({ queryKey: ["all-categories-admin"] });
+      qc.invalidateQueries({ queryKey: ["all-categories-nav"] });
+      qc.invalidateQueries({ queryKey: ["all-categories-dashboard"] });
       setOpen(false);
       setName("");
       setBudget("");
@@ -338,41 +552,81 @@ function CategoryDialog({ open, setOpen, yearId, editing }: any) {
   });
 
   return (
-    <Dialog open={open} onOpenChange={(o) => {
-      setOpen(o);
-      if (o) { setName(editing?.name ?? ""); setBudget(editing?.budget?.toString() ?? ""); setColor(editing?.color ?? COLOR_PRESETS[0]); }
-    }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) {
+          setName(editing?.name ?? "");
+          setBudget(editing?.budget?.toString() ?? "");
+          setColor(editing?.color ?? COLOR_PRESETS[0]);
+        }
+      }}
+    >
       <DialogContent className="glass-strong border-border/50">
         <DialogHeader>
-          <DialogTitle>{editing ? "Editar categoria" : "Nova categoria"}</DialogTitle>
+          <DialogTitle>
+            {editing ? "Editar categoria" : "Nova categoria"}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label>Nome</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Ações, Renda Fixa, Cripto..." />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex: Marketing, TI, Comercial..."
+            />
           </div>
           <div className="space-y-2">
             <Label>Orçamento previsto (R$)</Label>
-            <Input type="number" step="0.01" value={budget} onChange={e => setBudget(e.target.value)} placeholder="0,00" />
+            <Input
+              type="number"
+              step="0.01"
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+              placeholder="0,00"
+            />
           </div>
           <div className="space-y-2">
             <Label>Cor</Label>
             <div className="flex flex-wrap gap-2">
-              {COLOR_PRESETS.map(c => (
-                <button key={c} onClick={() => setColor(c)}
-                  className={`w-8 h-8 rounded-full transition-all ${color === c ? "ring-2 ring-offset-2 ring-offset-background scale-110" : "opacity-60 hover:opacity-100"}`}
-                  style={{ background: c, ...(color === c && { ['--tw-ring-color' as any]: c }) }} />
+              {COLOR_PRESETS.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setColor(c)}
+                  className={`w-8 h-8 rounded-full transition-all ${
+                    color === c
+                      ? "ring-2 ring-offset-2 ring-offset-background scale-110"
+                      : "opacity-60 hover:opacity-100"
+                  }`}
+                  style={{
+                    background: c,
+                    ...(color === c && { ["--tw-ring-color" as any]: c }),
+                  }}
+                />
               ))}
             </div>
           </div>
         </div>
         <DialogFooter className="gap-2">
           {editing && (
-            <Button variant="outline" onClick={() => { if (confirm("Excluir categoria?")) del.mutate(); }} className="border-destructive/40 text-destructive hover:bg-destructive/10 mr-auto">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (confirm("Excluir categoria?")) del.mutate();
+              }}
+              className="border-destructive/40 text-destructive hover:bg-destructive/10 mr-auto"
+            >
               <Trash2 className="w-4 h-4" />
             </Button>
           )}
-          <Button onClick={() => save.mutate()} disabled={!name || save.isPending} style={{ background: "var(--gradient-primary)" }} className="font-semibold">
+          <Button
+            onClick={() => save.mutate()}
+            disabled={!name || save.isPending}
+            style={{ background: "var(--gradient-primary)" }}
+            className="font-semibold"
+          >
             {editing ? "Salvar" : "Criar"}
           </Button>
         </DialogFooter>
@@ -388,7 +642,9 @@ function EditYearDialog({ open, setOpen, year }: any) {
   const save = useMutation({
     mutationFn: async () => {
       const db = getFirestore(getApp());
-      await updateDoc(doc(db, "years", year.id), { total_budget: parseFloat(budget) || 0 });
+      await updateDoc(doc(db, "years", year.id), {
+        total_budget: parseFloat(budget) || 0,
+      });
     },
     onSuccess: () => {
       toast.success("Orçamento atualizado");
@@ -399,7 +655,13 @@ function EditYearDialog({ open, setOpen, year }: any) {
   });
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o && year) setBudget(year.total_budget?.toString() ?? ""); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o && year) setBudget(year.total_budget?.toString() ?? "");
+      }}
+    >
       <DialogContent className="glass-strong border-border/50">
         <DialogHeader>
           <DialogTitle>Editar orçamento de {year?.year}</DialogTitle>
@@ -407,11 +669,21 @@ function EditYearDialog({ open, setOpen, year }: any) {
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label>Orçamento total previsto (R$)</Label>
-            <Input type="number" step="0.01" value={budget} onChange={e => setBudget(e.target.value)} />
+            <Input
+              type="number"
+              step="0.01"
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+            />
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={() => save.mutate()} disabled={save.isPending} style={{ background: "var(--gradient-primary)" }} className="font-semibold">
+          <Button
+            onClick={() => save.mutate()}
+            disabled={save.isPending}
+            style={{ background: "var(--gradient-primary)" }}
+            className="font-semibold"
+          >
             Salvar
           </Button>
         </DialogFooter>
