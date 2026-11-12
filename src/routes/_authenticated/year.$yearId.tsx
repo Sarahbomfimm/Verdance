@@ -436,7 +436,9 @@ function YearView() {
             </>
           ) : (
             <div className="flex-1 grid place-items-center text-muted-foreground text-sm text-center px-4">
-              Registre compras para ver a distribuição
+              {isAdmin
+                ? "Registre compras para ver a distribuição"
+                : "Sem compras registradas para exibir a distribuição"}
             </div>
           )}
         </Card>

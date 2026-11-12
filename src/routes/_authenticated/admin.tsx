@@ -332,7 +332,7 @@ function AdminPanelPage() {
                           </span>
                         ) : (
                           <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-accent/15 text-accent">
-                            Acesso por setor
+                            Somente visualização (setor)
                           </span>
                         )}
                       </div>
@@ -677,8 +677,8 @@ function UserAccessDialog({
                   />
                 </div>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Vê apenas o total geral na visão geral e os detalhes da
-                  categoria vinculada.
+                  Apenas visualiza o total geral na visão geral e os dados da
+                  categoria vinculada (sem criar ou editar).
                 </p>
               </button>
 

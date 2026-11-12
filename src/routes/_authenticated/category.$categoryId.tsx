@@ -35,7 +35,7 @@ const getLocalISODate = (date = new Date()) => {
 function CategoryView() {
   const { categoryId } = Route.useParams();
   const qc = useQueryClient();
-  const { userEmail, isRestricted, isLoadingAccess, canAccessCategory } = useUserAccess();
+  const { userEmail, isAdmin, isRestricted, isLoadingAccess, canAccessCategory } = useUserAccess();
   const [prodOpen, setProdOpen] = useState(false);
   const [editProd, setEditProd] = useState<any>(null);
   const [purchOpen, setPurchOpen] = useState(false);
@@ -294,16 +294,18 @@ function CategoryView() {
                 )}
               </>
             )}
-            <Button onClick={() => { setEditProd(null); setProdOpen(true); }} variant="outline" className="border-border/60 print:hidden shrink-0">
-              <Plus className="w-4 h-4 mr-2" /> Novo produto
-            </Button>
+            {isAdmin && (
+              <Button onClick={() => { setEditProd(null); setProdOpen(true); }} variant="outline" className="border-border/60 print:hidden shrink-0">
+                <Plus className="w-4 h-4 mr-2" /> Novo produto
+              </Button>
+            )}
           </div>
         </div>
 
         {products.length === 0 ? (
           <Card className="glass border-dashed border-2 border-border/50 p-8 text-center text-muted-foreground">
             <Package className="w-10 h-10 mx-auto mb-3" />
-            <p>Crie produtos dentro desta categoria com seus orçamentos próprios.</p>
+            <p>{isAdmin ? "Crie produtos dentro desta categoria com seus orçamentos próprios." : "Nenhum produto cadastrado nesta categoria."}</p>
           </Card>
         ) : filteredProducts.length === 0 ? (
           <Card className="glass border-dashed border-2 border-border/50 p-8 text-center text-muted-foreground">
@@ -340,9 +342,11 @@ function CategoryView() {
                           <span className="text-muted-foreground"> / {fmtBRL(pb)}</span>
                         </p>
                       </div>
-                      <button onClick={() => { setEditProd(p); setProdOpen(true); }} className="opacity-0 group-hover:opacity-100 transition p-1.5 hover:bg-secondary rounded print:hidden">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
+                      {isAdmin && (
+                        <button onClick={() => { setEditProd(p); setProdOpen(true); }} className="opacity-0 group-hover:opacity-100 transition p-1.5 hover:bg-secondary rounded print:hidden">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
 
                     {isExceeded && (
@@ -473,9 +477,11 @@ function CategoryView() {
               <span className="hidden sm:inline">Imprimir extrato</span>
             </Button>
 
-            <Button onClick={() => { setEditPurch(null); setPurchOpen(true); }} style={{ background: "var(--gradient-primary)" }} className="font-semibold shadow-glow">
-              <Plus className="w-4 h-4 mr-2" /> Nova compra
-            </Button>
+            {isAdmin && (
+              <Button onClick={() => { setEditPurch(null); setPurchOpen(true); }} style={{ background: "var(--gradient-primary)" }} className="font-semibold shadow-glow">
+                <Plus className="w-4 h-4 mr-2" /> Nova compra
+              </Button>
+            )}
           </div>
         </div>
 
@@ -483,10 +489,12 @@ function CategoryView() {
         {purchases.length === 0 ? (
           <Card className="glass border-dashed border-2 border-border/50 p-10 text-center print:hidden">
             <ShoppingCart className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-            <p className="text-muted-foreground mb-4">Nenhuma compra registrada nesta categoria.</p>
-            <Button onClick={() => { setEditPurch(null); setPurchOpen(true); }} style={{ background: "var(--gradient-primary)" }} className="font-semibold">
-              <Plus className="w-4 h-4 mr-2" /> Registrar primeira compra
-            </Button>
+            <p className={cn("text-muted-foreground", isAdmin && "mb-4")}>Nenhuma compra registrada nesta categoria.</p>
+            {isAdmin && (
+              <Button onClick={() => { setEditPurch(null); setPurchOpen(true); }} style={{ background: "var(--gradient-primary)" }} className="font-semibold">
+                <Plus className="w-4 h-4 mr-2" /> Registrar primeira compra
+              </Button>
+            )}
           </Card>
         ) : (
           <div className="space-y-4 print:hidden">
@@ -544,9 +552,11 @@ function CategoryView() {
                       </div>
                       <div className="text-right">
                         <p className="font-display font-bold number-tabular">{fmtBRL(p.amount)}</p>
-                        <button onClick={() => { setEditPurch(p); setPurchOpen(true); }} className="text-xs text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition">
-                          Editar
-                        </button>
+                        {isAdmin && (
+                          <button onClick={() => { setEditPurch(p); setPurchOpen(true); }} className="text-xs text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition">
+                            Editar
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -688,8 +698,12 @@ function CategoryView() {
         </div>
       </div>
 
-      <ProductDialog open={prodOpen} setOpen={setProdOpen} categoryId={categoryId} editing={editProd} />
-      <PurchaseDialog open={purchOpen} setOpen={setPurchOpen} category={category} products={products} editing={editPurch} />
+      {isAdmin && (
+        <>
+          <ProductDialog open={prodOpen} setOpen={setProdOpen} categoryId={categoryId} editing={editProd} />
+          <PurchaseDialog open={purchOpen} setOpen={setPurchOpen} category={category} products={products} editing={editPurch} />
+        </>
+      )}
       <ProductPurchasesDialog
         open={Boolean(selectedProduct)}
         setOpen={(open: boolean) => !open && setSelectedProduct(null)}
@@ -701,20 +715,24 @@ function CategoryView() {
           setShowPurchaseSearch(true);
           handlePrintPurchasesOnly();
         }}
-        onDeletePurchase={async (p: any) => {
-          try {
-            const db = getFirestore(getApp());
-            await deleteDoc(doc(db, "purchases", p.id));
-            toast.success("Compra excluída");
-            qc.invalidateQueries({ queryKey: ["purchases-cat", categoryId] });
-            if (category?.year_id) {
-              qc.invalidateQueries({ queryKey: ["purchases-year", category.year_id] });
-            }
-            qc.invalidateQueries({ queryKey: ["all-purchases"] });
-          } catch (err: any) {
-            toast.error("Erro ao excluir: " + err.message);
-          }
-        }}
+        onDeletePurchase={
+          isAdmin
+            ? async (p: any) => {
+                try {
+                  const db = getFirestore(getApp());
+                  await deleteDoc(doc(db, "purchases", p.id));
+                  toast.success("Compra excluída");
+                  qc.invalidateQueries({ queryKey: ["purchases-cat", categoryId] });
+                  if (category?.year_id) {
+                    qc.invalidateQueries({ queryKey: ["purchases-year", category.year_id] });
+                  }
+                  qc.invalidateQueries({ queryKey: ["all-purchases"] });
+                } catch (err: any) {
+                  toast.error("Erro ao excluir: " + err.message);
+                }
+              }
+            : undefined
+        }
       />
 
       <div className="hidden print:flex justify-between items-center text-xs text-slate-500 border-t border-slate-300 pt-4 mt-8">

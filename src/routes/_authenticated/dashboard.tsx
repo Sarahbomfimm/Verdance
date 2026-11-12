@@ -327,7 +327,7 @@ function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <EmptyChart msg="Crie um ano para começar" />
+            <EmptyChart msg={isAdmin ? "Crie um ano para começar" : "Sem dados registrados"} />
           )}
         </Card>
 
